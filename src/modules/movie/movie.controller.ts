@@ -3,17 +3,16 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   Post,
   Put,
   Query,
   Req,
-  UploadedFile,
   UseFilters,
   UseGuards,
-  UseInterceptors,
-  UsePipes,
-  ValidationPipe,
+
 } from '@nestjs/common';
 import { CommentService } from '../comment/comment.service';
 import { AddCommentDto } from '../comment/dto/add-comment.dto';
@@ -26,10 +25,11 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { CreateMovieDto } from './dtos/create-movie.dto';
 import { GetMovieDto } from './dtos/get-movie.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { multerConfig } from './uploadFile/multer.config';
 import { CreateEpisodeDto } from './dtos/create-episode.dto';
 import { UpdateEpisodeDto } from './dtos/update-episode.dto';
+import { GetTopMoviesDto } from './dtos/get-top-movies.dto';
+import { SearchFilmDto } from './dtos/search-film.dto';
+import { UpdateMovieDto } from './dtos/update-movie.dto';
 
 @Controller('movies')
 @ApiTags('movies')
@@ -41,7 +41,9 @@ export class MovieController {
     private readonly movieService: MovieService,
   ) {}
 
-  @Post(':id/comments')
+  //######################  Comment ######################
+
+  @Post('comments/:id')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'User Comment Movie' })
   async addComment(
@@ -58,13 +60,15 @@ export class MovieController {
     return comment;
   }
 
-  @Get(':id/comments')
+  @Get('comments/:id')
   @ApiOperation({ summary: "Get all movie's comment" })
   async getComment(@Param('id') movieId: string) {
     const allComments =
       await this.commentService.fetchAllMovieComment(+movieId);
     return allComments;
   }
+
+  //###################### RATING ######################
 
   @Post(':id/rate')
   @UseGuards(AuthGuard)
@@ -90,6 +94,7 @@ export class MovieController {
     return rates;
   }
 
+  // #################### PLAYLIST ######################
   @Post(':id/playlist')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Add Movie to user playlist' })
@@ -104,24 +109,58 @@ export class MovieController {
     return addMovie;
   }
 
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @UseGuards(new RoleGuard(['admin']))
-  @UseGuards(AuthGuard)
+  //##################### MOVIE ###########################
+
   @Post()
-  @UseInterceptors(FileInterceptor('thumb', multerConfig))
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   createMovie(
     @Body() movieData: CreateMovieDto,
-    @UploadedFile() file: Express.Multer.File,
+    // @UploadedFile() file: Express.Multer.File,
   ) {
-    const thumb_url = `/uploads/thumbs/${file.filename}`;
-    return this.movieService.createMovie(movieData, thumb_url);
+    // const thumb_url = `/uploads/thumbs/${file.filename}`;
+    return this.movieService.createMovie(movieData);
+  }
+
+  @Put(':id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  updateMovie(
+    @Body() movieData: UpdateMovieDto,
+    // @UploadedFile() file: Express.Multer.File,
+    @Param('id') movie_id: string,
+  ) {
+    // const thumb_url = `/uploads/thumbs/${file.filename}`;
+    return this.movieService.updateMovie(movieData, +movie_id);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  async delete(@Param('id') id: string) {
+    await this.movieService.deleteMovie(+id);
+    return { message: `Movie with ID ${id} deleted successfully` };
   }
 
   @Get()
   getMovie(@Query() query: GetMovieDto) {
-    console.log(query);
-
     return this.movieService.getMovie(query);
+  }
+
+  @Get('search')
+  async searchFilms(@Query() query: SearchFilmDto) {
+    return this.movieService.searchFilms(query);
+  }
+
+  @Get('top-of-month')
+  async getTopMoviesOfMonth(@Query() query: GetTopMoviesDto) {
+    try {
+      const limit = query.limit || 20; // Default to 20 if limit is not provided
+      const movies = await this.movieService.getTopMoviesOfMonth(limit);
+      return { movies };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to retrieve top movies',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Get(':id')
@@ -129,19 +168,48 @@ export class MovieController {
     return this.movieService.getById(Number(id));
   }
 
-  @Get('genre/:genre')
-  filterByGenre(@Param('genre') genre: string, @Query() query: GetMovieDto) {
-    return this.movieService.filterByGenre(genre, query);
+  //##################### COUNTRY ###########################
+
+  @Get('countrie/countries')
+  async getCountries() {
+    return this.movieService.getCountries();
+  }
+
+  @Get('filter-by-country/:countrySlug')
+  async filterByCountry(
+    @Param('countrySlug') countrySlug: string,
+    @Query() query: SearchFilmDto,
+  ) {
+    return this.movieService.filterByCountry(countrySlug, query);
+  }
+
+  //##################### YEARS ###########################
+
+  @Get('years/list')
+  async getYears() {
+    return this.movieService.getYears();
   }
 
   @Get('year/:year')
   filterByYear(@Param('year') year: string, @Query() query: GetMovieDto) {
     return this.movieService.filterByYear(Number(year), query);
   }
+  //##################### GENRES ###########################
+  @Get('genres/list')
+  async getGenres() {
+    return this.movieService.getGenres();
+  }
 
-  @UseGuards(new RoleGuard(['admin', 'content creator']))
-  @UseGuards(AuthGuard)
-  @Post(':movieId/episode')
+  @Get('genre/:genre')
+  filterByGenre(@Param('genre') genre: string, @Query() query: GetMovieDto) {
+    return this.movieService.filterByGenre(genre, query);
+  }
+
+  //##################### EPISODE ###########################
+
+ 
+  @Post('episode/:movieId')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   createEpisode(
     @Param('movieId') movie_id: string,
     @Body() data: CreateEpisodeDto,
@@ -150,9 +218,8 @@ export class MovieController {
   }
 
   // bo movie id
-  @UseGuards(new RoleGuard(['admin', 'content creator']))
-  @UseGuards(AuthGuard)
-  @Put(':movieId/episode/:episodeId')
+  @Put('episode/:movieId/:episodeId')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   updateEpisode(
     @Param('movieId') movie_id: string,
     @Param('episodeId') episode_id: string,
@@ -165,17 +232,20 @@ export class MovieController {
     );
   }
 
-  @UseGuards(new RoleGuard(['admin', 'content creator']))
-  @UseGuards(AuthGuard)
+
   @Delete('episode/:episodeId')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   deleteEpisode(@Param('episodeId') episode_id: string) {
     return this.movieService.deleteEpisode(Number(episode_id));
   }
 
-  @Get(':movieId/episode')
+  @Get('episode/:movieId')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   getEpisode(@Param('movieId') movie_id: string) {
     return this.movieService.getEpisode(Number(movie_id));
   }
+
+  //##################### RATING ###########################
 
   @Get(':id/user-rate')
   @UseGuards(AuthGuard)

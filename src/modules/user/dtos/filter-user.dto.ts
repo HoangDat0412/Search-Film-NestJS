@@ -3,4 +3,3 @@ export class FilterUserDto {
   item_page: string;
   search: string;
 }
-

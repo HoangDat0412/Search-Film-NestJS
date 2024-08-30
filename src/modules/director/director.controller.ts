@@ -1,35 +1,60 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { DirectorService } from './director.service';
 import { DirectorDto } from './dto/director.dto';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { RoleGuard } from '../auth/guards/role.guard';
+import { GetDirectorsDto } from './dto/get-directors.dto';
 
 @Controller('directors')
 @ApiTags('director')
 export class DirectorController {
   constructor(private readonly directorService: DirectorService) {}
 
- @Post()
- @ApiOperation({summary: "Add Director"})
- async addDirector (@Body() createDirectorDto: DirectorDto) {
+  @Post()
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  async addDirector(@Body() createDirectorDto: DirectorDto) {
     return await this.directorService.addDirector(createDirectorDto);
- }
+  }
 
- @Put(':id')
- @ApiOperation({summary: "Add Director Name"})
- async editDirector (@Param('id') director_id: string, @Body() editDirectorDto: DirectorDto) {
-    return await this.directorService.editDirector(+director_id, editDirectorDto);
- }
+  @Put(':id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  async editDirector(
+    @Param('id') director_id: string,
+    @Body() editDirectorDto: DirectorDto,
+  ) {
+    return await this.directorService.editDirector(
+      +director_id,
+      editDirectorDto,
+    );
+  }
 
   @Get()
-  @ApiOperation({summary: "Fetch all Directors"})
-  async findAll(
-    @Query('page') page: number = 2,
-    @Query('pageSize') pageSize: number = 10,
-  ) {
-    const skip = (page - 1) * pageSize;
-    const take = pageSize;
+  getAllDirectors(@Query() query: GetDirectorsDto) {
+    return this.directorService.getAllDirectors(query);
+  }
 
-    const directors = await this.directorService.getAllDirectors(skip, take);
-    return directors;
+  @Get('search/director')
+  searchDirectors(
+    @Query() query: GetDirectorsDto,
+    @Query('name') name: string,
+  ): any {
+    return this.directorService.searchDirectors(query, name);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  deleteDirector(@Param('id') id: number): Promise<void> {
+    return this.directorService.deleteDirector(id);
   }
 }

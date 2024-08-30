@@ -14,102 +14,102 @@ datasource db {
 }
 
 model User {
-  user_id          Int        @id @default(autoincrement())
-  username         String     @unique
-  password         String
-  is_verify        Boolean    @default(false)
-  is_2fa           Boolean    @default(false)
-  email            String     @unique
-  full_name        String?
-  avatar_url       String?
-  role             String     @default("user")
-  google_id        String?    @unique
-  facebook_id      String?    @unique
-  created_at       DateTime   @default(now())
-  updated_at       DateTime   @default(now())
-  ratings          Rating[]
-  comments         Comment[]
-  notifications    Notification[]
-  watch_histories  WatchHistory[]
-  permissions      Permission[]
-  activity_logs    ActivityLog[]
-  categories       Category[]
-  blogs            Blog[]
-  blog_comments    BlogComment[]
-  report_bugs       ReportBug[]
-  request_features  RequestFeature[]
+  user_id         Int              @id @default(autoincrement())
+  username        String           @unique
+  password        String
+  is_verify       Boolean          @default(false)
+  is_2fa          Boolean          @default(false)
+  email           String           @unique
+  full_name       String?
+  avatar_url      String?
+  role            String           @default("user")
+  google_id       String?          @unique
+  facebook_id     String?          @unique
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @default(now())
+  ratings         Rating[]
+  comments        Comment[]
+  notifications   Notification[]
+  watch_histories WatchHistory[]
+  permissions     Permission[]
+  activity_logs   ActivityLog[]
+  categories      Category[]
+  blogs           Blog[]
+  blog_comments   BlogComment[]
+  ReportBug       ReportBug[]
+  RequestFeature  RequestFeature[]
 }
 
 model Movie {
-  movie_id         Int           @id @default(autoincrement())
-  name             String
-  origin_name      String?
-  content          String?
-  type             String        @default("single")
-  status           String?
-  thumb_url        String?
-  trailer_url      String?
-  duration         String?
-  episode_current  String?
-  episode_total    String?
-  quality          String?
-  lang             String?
-  notify           String?
-  showtimes        String?
-  slug             String        @unique
-  year             Int?
-  view             Int           @default(0)
-  is_copyright     Boolean       @default(false)
-  chieurap         Boolean       @default(false)
-  poster_url       String?
-  sub_docquyen     Boolean       @default(false)
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @default(now())
-  episodes         Episode[]
-  movie_genres     MovieGenre[]
-  movie_countries  MovieCountry[]
-  movie_actors     MovieActor[]
-  movie_directors  MovieDirector[]
-  ratings          Rating[]
-  comments         Comment[]
-  watch_histories  WatchHistory[]
-  category_movies  CategoryMovie[]
-  blogs            Blog[]
+  movie_id        Int             @id @default(autoincrement())
+  name            String
+  origin_name     String?
+  content         String?
+  type            String          @default("single")
+  status          String?
+  thumb_url       String?
+  trailer_url     String?
+  duration        String?
+  episode_current String?
+  episode_total   String?
+  quality         String?
+  lang            String?
+  notify          String?
+  showtimes       String?
+  slug            String          @unique
+  year            Int?
+  view            Int             @default(0)
+  is_copyright    Boolean         @default(false)
+  chieurap        Boolean         @default(false)
+  poster_url      String?
+  sub_docquyen    Boolean         @default(false)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @default(now())
+  episodes        Episode[]
+  movie_genres    MovieGenre[]
+  movie_countries MovieCountry[]
+  movie_actors    MovieActor[]
+  movie_directors MovieDirector[]
+  ratings         Rating[]
+  comments        Comment[]
+  watch_histories WatchHistory[]
+  category_movies CategoryMovie[]
+  blogs           Blog[]
 }
 
 model Episode {
-  episode_id   Int       @id @default(autoincrement())
-  movie_id     Int
-  server_name  String?
-  name         String?
-  slug         String 
-  filename     String?
-  link_film    String?
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @default(now())
-  movie        Movie     @relation(fields: [movie_id], references: [movie_id])
+  episode_id  Int      @id @default(autoincrement())
+  movie_id    Int
+  server_name String?
+  name        String?
+  slug        String
+  filename    String?
+  link_film   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
+  movie       Movie    @relation(fields: [movie_id], references: [movie_id])
 }
 
 model Genre {
-  genre_id    Int          @id @default(autoincrement())
-  name        String       @unique
-  slug        String?      @unique
+  genre_id     Int          @id @default(autoincrement())
+  name         String       @unique
+  slug         String?      @unique
   movie_genres MovieGenre[]
 }
 
 model MovieGenre {
-  movie_id  Int
-  genre_id  Int
-  movie     Movie  @relation(fields: [movie_id], references: [movie_id])
-  genre     Genre  @relation(fields: [genre_id], references: [genre_id])
+  movie_id Int
+  genre_id Int
+  movie    Movie @relation(fields: [movie_id], references: [movie_id])
+  genre    Genre @relation(fields: [genre_id], references: [genre_id])
 
   @@id([movie_id, genre_id])
 }
 
 model Country {
-  country_id    Int            @id @default(autoincrement())
-  name          String         @unique
-  slug          String?        @unique
+  country_id      Int            @id @default(autoincrement())
+  name            String         @unique
+  slug            String?        @unique
   movie_countries MovieCountry[]
 }
 
@@ -123,23 +123,23 @@ model MovieCountry {
 }
 
 model Actor {
-  actor_id    Int          @id @default(autoincrement())
-  name        String
+  actor_id     Int          @id @default(autoincrement())
+  name         String
   movie_actors MovieActor[]
 }
 
 model MovieActor {
-  movie_id  Int
-  actor_id  Int
-  movie     Movie @relation(fields: [movie_id], references: [movie_id])
-  actor     Actor @relation(fields: [actor_id], references: [actor_id])
+  movie_id Int
+  actor_id Int
+  movie    Movie @relation(fields: [movie_id], references: [movie_id])
+  actor    Actor @relation(fields: [actor_id], references: [actor_id])
 
   @@id([movie_id, actor_id])
 }
 
 model Director {
-  director_id    Int             @id @default(autoincrement())
-  name           String
+  director_id     Int             @id @default(autoincrement())
+  name            String
   movie_directors MovieDirector[]
 }
 
@@ -153,14 +153,14 @@ model MovieDirector {
 }
 
 model Rating {
-  rating_id   Int       @id @default(autoincrement())
-  movie_id    Int
-  user_id     Int
-  score       Int
-  review      String?
-  created_at  DateTime  @default(now())
-  movie       Movie     @relation(fields: [movie_id], references: [movie_id])
-  user        User      @relation(fields: [user_id], references: [user_id])
+  rating_id  Int      @id @default(autoincrement())
+  movie_id   Int
+  user_id    Int
+  score      Int
+  review     String?
+  created_at DateTime @default(now())
+  movie      Movie    @relation(fields: [movie_id], references: [movie_id])
+  user       User     @relation(fields: [user_id], references: [user_id])
 }
 
 model Comment {
@@ -177,112 +177,113 @@ model Comment {
 }
 
 model Notification {
-  notification_id  Int       @id @default(autoincrement())
-  user_id          Int
-  message          String
-  read             Boolean   @default(false)
-  created_at       DateTime  @default(now())
-  user             User      @relation(fields: [user_id], references: [user_id])
+  notification_id Int      @id @default(autoincrement())
+  user_id         Int
+  message         String
+  read            Boolean  @default(false)
+  created_at      DateTime @default(now())
+  user            User     @relation(fields: [user_id], references: [user_id])
 }
 
 model Advertisement {
-  ad_id       Int       @id @default(autoincrement())
-  title       String
-  content     String?
-  image_url   String?
-  target_url  String?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @default(now())
+  ad_id      Int      @id @default(autoincrement())
+  title      String
+  content    String?
+  image_url  String?
+  target_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
 }
 
 model WatchHistory {
-  history_id  Int       @id @default(autoincrement())
-  user_id     Int
-  movie_id    Int
-  watched_at  DateTime  @default(now())
-  user        User      @relation(fields: [user_id], references: [user_id])
-  movie       Movie     @relation(fields: [movie_id], references: [movie_id])
+  history_id Int      @id @default(autoincrement())
+  user_id    Int
+  movie_id   Int
+  watched_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [user_id])
+  movie      Movie    @relation(fields: [movie_id], references: [movie_id])
 }
 
 model Permission {
-  permission_id  Int       @id @default(autoincrement())
-  user_id        Int
-  permission     String
-  created_at     DateTime  @default(now())
-  user           User      @relation(fields: [user_id], references: [user_id])
+  permission_id Int      @id @default(autoincrement())
+  user_id       Int
+  permission    String
+  created_at    DateTime @default(now())
+  user          User     @relation(fields: [user_id], references: [user_id])
 }
 
 model ActivityLog {
-  log_id     Int       @id @default(autoincrement())
+  log_id     Int      @id @default(autoincrement())
   user_id    Int
   action     String
-  created_at DateTime  @default(now())
-  user       User      @relation(fields: [user_id], references: [user_id])
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [user_id])
 }
 
 model Category {
-  category_id  Int             @id @default(autoincrement())
-  user_id      Int
-  name         String
-  created_at   DateTime        @default(now())
-  updated_at   DateTime        @default(now())
-  user         User            @relation(fields: [user_id], references: [user_id])
+  category_id     Int             @id @default(autoincrement())
+  user_id         Int
+  name            String
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @default(now())
+  user            User            @relation(fields: [user_id], references: [user_id])
   category_movies CategoryMovie[]
 }
 
 model CategoryMovie {
-  category_id  Int
-  movie_id     Int
-  added_at     DateTime  @default(now())
-  category     Category  @relation(fields: [category_id], references: [category_id])
-  movie        Movie     @relation(fields: [movie_id], references: [movie_id])
+  category_id Int
+  movie_id    Int
+  added_at    DateTime @default(now())
+  category    Category @relation(fields: [category_id], references: [category_id])
+  movie       Movie    @relation(fields: [movie_id], references: [movie_id])
 
   @@id([category_id, movie_id])
 }
 
 model Blog {
-  blog_id    Int       @id @default(autoincrement())
-  user_id    Int
-  title      String
-  content    String
-  movie_id   Int?
-  image_url  String?
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  user       User      @relation(fields: [user_id], references: [user_id])
-  movie      Movie?    @relation(fields: [movie_id], references: [movie_id])
+  blog_id       Int           @id @default(autoincrement())
+  user_id       Int
+  title         String
+  content       String
+  movie_id      Int?
+  image_url     String?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @default(now())
+  user          User          @relation(fields: [user_id], references: [user_id])
+  movie         Movie?        @relation(fields: [movie_id], references: [movie_id])
+  is_verify     Boolean       @default(false)
   blog_comments BlogComment[]
 }
 
 model BlogComment {
-  comment_id        Int         @id @default(autoincrement())
+  comment_id        Int           @id @default(autoincrement())
   blog_id           Int
   user_id           Int
   content           String
   parent_comment_id Int?
-  created_at        DateTime    @default(now())
-  blog              Blog        @relation(fields: [blog_id], references: [blog_id])
-  user              User        @relation(fields: [user_id], references: [user_id])
-  parent_comment    BlogComment? @relation("BlogCommentToParent", fields: [parent_comment_id], references: [comment_id])
+  created_at        DateTime      @default(now())
+  blog              Blog          @relation(fields: [blog_id], references: [blog_id])
+  user              User          @relation(fields: [user_id], references: [user_id])
+  parent_comment    BlogComment?  @relation("BlogCommentToParent", fields: [parent_comment_id], references: [comment_id])
   replies           BlogComment[] @relation("BlogCommentToParent")
 }
 
 model ReportBug {
-  bug_id       Int         @id @default(autoincrement())
-  user_id         Int
-  title           String
-  description     String
-  created_at      DateTime        @default(now())
-  user            User       @relation(fields: [user_id], references: [user_id])
-
+  bug_id      Int      @id @default(autoincrement())
+  user_id     Int
+  title       String
+  url_image   String
+  description String
+  created_at  DateTime @default(now())
+  user        User     @relation(fields: [user_id], references: [user_id])
 }
 
 model RequestFeature {
-  feature_id      Int     @id   @default(autoincrement())
-  user_id         Int
-  title           String
-  description     String
-  created_at      DateTime    @default(now())
-  user            User     @relation(fields: [user_id], references: [user_id])
-
+  feature_id  Int      @id @default(autoincrement())
+  user_id     Int
+  title       String
+  url_image   String
+  description String
+  created_at  DateTime @default(now())
+  user        User     @relation(fields: [user_id], references: [user_id])
 }

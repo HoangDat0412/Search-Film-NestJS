@@ -1,12 +1,15 @@
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
+export class CreateReportBugDto {
+  @IsNotEmpty()
+  @IsString()
+  title: string;
 
-export class CreateBugReportDto {
-    @IsString()
-    @IsNotEmpty()
-    title: string;
-    
-    @IsString()
-    @IsNotEmpty()
-    description: string
+  @IsOptional()
+  @IsString()
+  url_image?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
 }

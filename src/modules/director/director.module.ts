@@ -5,8 +5,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [PrismaModule,JwtModule.register({})],
+  imports: [PrismaModule, JwtModule.register({})],
   providers: [DirectorService],
-  controllers: [DirectorController]
+  controllers: [DirectorController],
 })
 export class DirectorModule {}

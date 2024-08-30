@@ -4,12 +4,17 @@ import * as dotenv from 'dotenv';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { AllExceptionsFilter } from './modules/all-exceptions/all-exceptions.filter';
+import * as path from 'path';
 dotenv.config();
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe());
   app.useStaticAssets('uploads', { prefix: '/uploads' });
+  app.setViewEngine('hbs'); // Hoặc 'ejs', 'pug', v.v.
+  app.setBaseViewsDir(path.join(__dirname, '..', 'src', 'templates')); 
   const config = new DocumentBuilder()
     .setTitle('API Example')
     .setDescription('API description')

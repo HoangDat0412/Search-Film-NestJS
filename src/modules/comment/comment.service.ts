@@ -6,9 +6,13 @@ import { AddCommentDto } from './dto/add-comment.dto';
 export class CommentService {
   constructor(private prisma: PrismaService) {}
 
-  async addComment(movieId: number, userId: number, createCommentDto: AddCommentDto) {
-    if(!createCommentDto.content) {
-      throw new Error("Comment Is Blank");
+  async addComment(
+    movieId: number,
+    userId: number,
+    createCommentDto: AddCommentDto,
+  ) {
+    if (!createCommentDto.content) {
+      throw new Error('Comment Is Blank');
     }
     return this.prisma.comment.create({
       data: {
@@ -25,10 +29,10 @@ export class CommentService {
 
   async fetchAllMovieComment(movieId: number) {
     const existedMovie = await this.prisma.movie.findFirst({
-      where: {movie_id: movieId}
-    })
-    if(!existedMovie) {
-      throw new HttpException("Movie Is Not Exist", HttpStatus.NOT_FOUND);
+      where: { movie_id: movieId },
+    });
+    if (!existedMovie) {
+      throw new HttpException('Movie Is Not Exist', HttpStatus.NOT_FOUND);
     }
     return this.prisma.comment.findMany({
       where: { movie_id: movieId },
@@ -37,7 +41,7 @@ export class CommentService {
 
   async updateComment(id: number, updateCommentDto: AddCommentDto) {
     return this.prisma.comment.update({
-      where: {comment_id: id },
+      where: { comment_id: id },
       data: {
         content: updateCommentDto.content,
       },
@@ -46,7 +50,7 @@ export class CommentService {
 
   async deleteComment(id: number) {
     return this.prisma.comment.delete({
-      where: {comment_id: id },
+      where: { comment_id: id },
     });
   }
 }

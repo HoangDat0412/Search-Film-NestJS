@@ -6,7 +6,7 @@ import { PlaylistService } from '../playlist/playlist.service';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [PrismaModule,  JwtModule.register({})],
+  imports: [PrismaModule, JwtModule.register({})],
   controllers: [UserController],
   providers: [UserService, PlaylistService],
 })

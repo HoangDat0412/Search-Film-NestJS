@@ -41,8 +41,4 @@ export class CreateMovieDto {
   @IsArray()
   @IsNumber({}, { each: true })
   movie_directors: number[];
-  @Type(() => Number)
-  @IsArray()
-  @IsNumber({}, { each: true })
-  category_movies: number[];
 }

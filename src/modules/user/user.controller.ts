@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -23,9 +24,11 @@ import { FilterUserDto } from './dtos/filter-user.dto';
 import { UpdateUserByAdminDto } from './dtos/update-user-by-admin.dto';
 import { User } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { multerConfig } from './uploadFile/multer.config';
-
 import { ApiTags } from '@nestjs/swagger';
+import { UpdateUsernameDto } from './dtos/update-username.dto';
+import { UpdateEmailDto } from './dtos/update-email.dto';
+import { ChangePasswordDto } from './dtos/change-password.dto';
+import { createMulterOptions } from './uploadFile/multer.config';
 
 @Controller('users')
 @ApiTags('users')
@@ -58,56 +61,68 @@ export class UserController {
     return playlists;
   }
 
-  @UseGuards(new RoleGuard(['admin']))
-  @UseGuards(AuthGuard)
-  @Get('/:id')
-  getDetail(@Param('id') id: string) {
-    return this.userService.getUserDetail(Number(id));
-  }
 
-  @UseGuards(AuthGuard)
+
   @Get('get/me')
+  @UseGuards(AuthGuard)
   getMe(@Req() req: any) {
     const user_id = req.user_data.user_id;
     return this.userService.getMe(Number(user_id));
   }
 
-  @UseGuards(new RoleGuard(['admin']))
-  @UseGuards(AuthGuard)
-  @Get('get-all')
-  getAll(@Query() query: FilterUserDto) {
-    return this.userService.getAll(query);
-  }
-
-  @UseGuards(AuthGuard)
   @Post('avatar')
-  @UseInterceptors(FileInterceptor('avatar', multerConfig))
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor('avatar', createMulterOptions('avatars')))
   async uploadAvatar(
     @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
   ) {
     const protocol = req.protocol;
-    const host = req.get('host'); 
+    const host = req.get('host');
     let avatarUrl = `/uploads/avatars/${file.filename}`;
     avatarUrl = `${protocol}://${host}${avatarUrl}`;
     return this.userService.uploadAvatar(req, avatarUrl);
   }
 
-  @UseGuards(AuthGuard)
   @Put('/enable-2fa')
+  @UseGuards(AuthGuard)
   enable2fa(@Req() req: any) {
     const user_id = req.user_data.user_id;
     return this.userService.enable2fa(user_id);
   }
 
+  @Patch('/username')
   @UseGuards(AuthGuard)
-  @Put('/me')
-  updateByUser(@Req() req: any, @Body() userData: any) {
-    const user_id = req.user_data.user_id;
+  async updateUsername(
+    @Req() req,
+    @Body() updateUsernameDto: UpdateUsernameDto,
+  ) {
+    return this.userService.updateUsername(
+      req.user_data.user_id,
+      updateUsernameDto,
+    );
   }
 
+  @Patch('/email')
   @UseGuards(AuthGuard)
+  async updateEmail(@Req() req, @Body() updateEmailDto: UpdateEmailDto) {
+    return this.userService.updateEmail(req.user_data.user_id, updateEmailDto);
+  }
+
+  @Patch('/password')
+  @UseGuards(AuthGuard)
+  async changePassword(
+    @Req() req,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.userService.changePassword(
+      req.user_data.user_id,
+      changePasswordDto,
+    );
+  }
+
   @Put('/disable-2fa')
+  @UseGuards(AuthGuard)
   disable2fa(@Req() req: any) {
     const user_id = req.user_data.user_id;
     return this.userService.disable2fa(user_id);
@@ -115,9 +130,20 @@ export class UserController {
 
   // Api admin
 
-  @UseGuards(new RoleGuard(['admin']))
-  @UseGuards(AuthGuard)
+  @Get('/listuser/all')
+  @UseGuards(AuthGuard, new RoleGuard(['admin']))
+  getAll(@Query() query: FilterUserDto) {
+    return this.userService.getAll(query);
+  }
+
+  @Get('/:id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin']))
+  getDetail(@Param('id') id: string) {
+    return this.userService.getUserDetail(Number(id));
+  }
+
   @Put('/admin/users/:id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin']))
   updateUserByAdmin(
     @Param('id') id: string,
     @Body() userData: UpdateUserByAdminDto,
@@ -125,16 +151,14 @@ export class UserController {
     return this.userService.updateUserByAdmin(Number(id), userData);
   }
 
-  @UseGuards(new RoleGuard(['admin']))
-  @UseGuards(AuthGuard)
   @Delete('/admin/users/:id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin']))
   deleteUserByAdmin(@Param('id') id: string): Promise<User> {
     return this.userService.deleteUserByAdmin(Number(id));
   }
 
-  @UseGuards(new RoleGuard(['admin']))
-  @UseGuards(AuthGuard)
   @Get('/admin/users/search')
+  @UseGuards(AuthGuard, new RoleGuard(['admin']))
   getUserByAdmin(@Query() query: FilterUserDto) {
     return this.userService.getUserByAdmin(query);
   }

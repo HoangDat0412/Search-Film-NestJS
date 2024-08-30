@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './modules/user/user.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { CommentModule } from './modules/comment/comment.module';
@@ -17,7 +17,10 @@ import { ReportBugModule } from './modules/report-bug/report-bug.module';
 import { RequestFeatureModule } from './modules/request-feature/request-feature.module';
 import { AdvertisementModule } from './modules/advertisement/advertisement.module';
 import { DirectorModule } from './modules/director/director.module';
-
+import { MailerModule } from '@nestjs-modules/mailer';
+import { mailerConfig } from './config/mailer.config';
+import { CountryModule } from './modules/country/country.module';
+import { BlogModule } from './modules/blog/blog.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -39,8 +42,15 @@ import { DirectorModule } from './modules/director/director.module';
     DirectorModule,
     ActorModule,
     GenreModule,
+    CountryModule,
+    BlogModule,
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: mailerConfig,
+      inject: [ConfigService],
+    }),
   ],
   controllers: [AppController],
-  providers: [AppService ],
+  providers: [AppService],
 })
 export class AppModule {}

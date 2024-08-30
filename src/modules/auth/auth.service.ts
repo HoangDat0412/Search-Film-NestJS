@@ -2,17 +2,20 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { RegisterDto } from './dtos/register.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { MailerService } from './mailersend/mailer.service';
+
 import { Login2faDto } from './dtos/login-2fa.dto';
 import { LoginDto } from './dtos/login.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailerService } from '@nestjs-modules/mailer';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prismaService: PrismaService,
     private jwtService: JwtService,
-    private mailerService: MailerService,
+    private readonly mailerService: MailerService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(userData: RegisterDto): Promise<any> {
@@ -34,32 +37,63 @@ export class AuthService {
         secret: process.env.VERIFY_TOKEN_KEY,
       },
     );
-
-    await this.mailerService.verifyEmail(token, userData.email);
+    await this.sendConfirmationEmail(userData.email, token);
+    // await this.mailerService.verifyEmail(token, userData.email);
 
     return await this.prismaService.user.create({
-      data: { ...userData, password: hash, role: 'user', is_verify: true },
+      data: { ...userData, password: hash, role: 'user', is_verify: false },
     });
   }
 
-  async verifyAccount(token: string) {
+  private async sendConfirmationEmail(email: string, token: string) {
+    const appUrl = this.configService.get<string>('APP_URL');
+    const confirmUrl = `${appUrl}/api/auth/confirm?token=${token}`;
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Confirm your email',
+      template: './confirmation', // e.g., confirmation.hbs
+      context: {
+        confirmUrl,
+      },
+    });
+  }
+
+  // Method to confirm user registration
+  async confirmEmail(token: string): Promise<string> {
     try {
-      // console.log(token);
-      const { email } = await this.jwtService.verifyAsync(token, {
+      // Verify the token
+      const decoded = await this.jwtService.verifyAsync(token, {
         secret: process.env.VERIFY_TOKEN_KEY,
       });
 
-      return await this.prismaService.user.update({
-        where: { email: email },
+      // Find the user by email
+      const user = await this.prismaService.user.findUnique({
+        where: { email: decoded.email },
+      });
+
+      if (!user) {
+        throw new HttpException('Invalid token', HttpStatus.BAD_REQUEST);
+      }
+
+      if (user.is_verify) {
+        throw new HttpException(
+          'Email already confirmed',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Update the user's is_verify field to true
+      await this.prismaService.user.update({
+        where: { email: decoded.email },
         data: { is_verify: true },
       });
+
+      return 'Email confirmed successfully';
     } catch (error) {
       throw new HttpException(
-        {
-          status: 419,
-          message: 'token expired or does not exist',
-        },
-        419,
+        'Invalid or expired token',
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -108,7 +142,7 @@ export class AuthService {
         },
       );
 
-      await this.mailerService.sendOtpEmail(user.email, otp);
+      // await this.mailerService.sendOtpEmail(user.email, otp);
 
       return { otp_token };
     }
@@ -120,7 +154,7 @@ export class AuthService {
 
     const refresh_token = await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
-      secret: process.env.JWT_SECRET_KEY,
+      secret: process.env.REFRESH_SECRET_KEY,
     });
     return {
       access_token,
@@ -168,14 +202,13 @@ export class AuthService {
   async refreshToken(token: any): Promise<any> {
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET_KEY,
+        secret: process.env.REFRESH_SECRET_KEY,
       });
       const { iat, exp, ...user } = payload;
       const access_token = await this.jwtService.signAsync(user, {
         expiresIn: '15m',
         secret: process.env.JWT_SECRET_KEY,
       });
-      console.log(access_token);
       return {
         access_token: access_token,
       };
@@ -193,5 +226,63 @@ export class AuthService {
   async generateOtp() {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     return otp;
+  }
+
+  // Request a password reset
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.prismaService.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const token = await this.jwtService.signAsync(
+      { email },
+      {
+        secret: this.configService.get<string>('RESET_PASSWORD_TOKEN_KEY'),
+        expiresIn: '15m',
+      },
+    );
+
+    const resetUrl = `${this.configService.get<string>('APP_URL')}/api/auth/reset-password?token=${token}`;
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Reset your password',
+      template: './send-reset-password', // e.g., reset-password.hbs
+      context: {
+        resetUrl,
+      },
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<string> {
+    try {
+      const decoded = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('RESET_PASSWORD_TOKEN_KEY'),
+      });
+
+      const user = await this.prismaService.user.findUnique({
+        where: { email: decoded.email },
+      });
+
+      if (!user) {
+        throw new HttpException('Invalid token', HttpStatus.BAD_REQUEST);
+      }
+
+      const salt = await bcrypt.genSalt();
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      await this.prismaService.user.update({
+        where: { email: decoded.email },
+        data: { password: hashedPassword },
+      });
+
+      return 'Password reset successfully';
+    } catch (error) {
+      throw new HttpException(
+        'Invalid or expired token',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 }

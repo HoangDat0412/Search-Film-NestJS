@@ -1,13 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilterUserDto } from './dtos/filter-user.dto';
 import { UpdateUserByAdminDto } from './dtos/update-user-by-admin.dto';
 import { User } from '@prisma/client';
+import { UpdateUsernameDto } from './dtos/update-username.dto';
+import { UpdateEmailDto } from './dtos/update-email.dto';
+import { ChangePasswordDto } from './dtos/change-password.dto';
 
 @Injectable()
 export class UserService {
-
-    constructor(private prismaService: PrismaService) {}
+  constructor(private prismaService: PrismaService) {}
 
   async getUserDetail(id: number): Promise<any> {
     const response = await this.prismaService.user.findUnique({
@@ -33,7 +41,6 @@ export class UserService {
         user_id: true,
         username: true,
         email: true,
-        full_name: true,
         avatar_url: true,
         role: true,
         facebook_id: true,
@@ -41,18 +48,18 @@ export class UserService {
         is_2fa: true,
         is_verify: true,
         created_at: true,
-        updated_at: true
-      }
+        updated_at: true,
+      },
     });
     return response;
   }
 
   async uploadAvatar(req: any, avatarUrl: string) {
-    const user = req.user_data
+    const user = req.user_data;
     return this.prismaService.user.update({
-      where: {user_id: user.user_id},
-      data: {avatar_url: avatarUrl}
-    })
+      where: { user_id: user.user_id },
+      data: { avatar_url: avatarUrl },
+    });
   }
 
   async getAll(query: FilterUserDto): Promise<any> {
@@ -60,8 +67,15 @@ export class UserService {
     const item_in_page = Number(query.item_page) || 10;
     const search = query.search || '';
 
-    const [user, count] = await this.prismaService.$transaction([
+    // Validate page and item_in_page
+    if (page < 1) {
+      throw new BadRequestException('Page number must be greater than 0');
+    }
+    if (item_in_page < 1) {
+      throw new BadRequestException('Items per page must be greater than 0');
+    }
 
+    const [users, count] = await this.prismaService.$transaction([
       this.prismaService.user.findMany({
         where: {
           role: {
@@ -70,12 +84,12 @@ export class UserService {
           OR: [
             {
               email: {
-                startsWith: `%${search}%`,
+                contains: search, // or 'startsWith' if you want to search at the beginning
               },
             },
             {
               username: {
-                startsWith: `%${search}%`,
+                contains: search, // or 'startsWith'
               },
             },
           ],
@@ -91,7 +105,7 @@ export class UserService {
           facebook_id: true,
           is_2fa: true,
           created_at: true,
-          updated_at: true
+          updated_at: true,
         },
         skip: (page - 1) * item_in_page,
         take: item_in_page,
@@ -107,12 +121,12 @@ export class UserService {
           OR: [
             {
               email: {
-                startsWith: `%${search}%`,
+                contains: search, // or 'startsWith'
               },
             },
             {
               username: {
-                startsWith: `%${search}%`,
+                contains: search, // or 'startsWith'
               },
             },
           ],
@@ -120,58 +134,126 @@ export class UserService {
       }),
     ]);
 
+    // Calculate total pages
+    const totalPages = Math.ceil(count / item_in_page);
+
     return {
-      user,
+      users,
       count,
+      totalPages,
+      currentPage: page,
     };
   }
 
   async enable2fa(id: number): Promise<User> {
     return this.prismaService.user.update({
       where: {
-        user_id: id
+        user_id: id,
       },
       data: {
-        is_2fa: true
-      }
-    })
+        is_2fa: true,
+      },
+    });
   }
 
   async disable2fa(id: number): Promise<User> {
     return this.prismaService.user.update({
       where: {
-        user_id: id
+        user_id: id,
       },
       data: {
-        is_2fa: false
-      }
-    })
+        is_2fa: false,
+      },
+    });
   }
 
+  async updateUsername(userId: number, dto: UpdateUsernameDto) {
+    return await this.prismaService.user.update({
+      where: { user_id: userId },
+      data: { username: dto.username },
+      select: {
+        username: true,
+        email: true,
+        full_name: true,
+        avatar_url: true,
+        role: true,
+        updated_at: true,
+      },
+    });
+  }
 
-// Admin
-  async updateUserByAdmin(id: number, data: UpdateUserByAdminDto):Promise<User> {
+  async updateEmail(userId: number, dto: UpdateEmailDto) {
+    return await this.prismaService.user.update({
+      where: { user_id: userId },
+      data: { email: dto.email },
+      select: {
+        username: true,
+        email: true,
+        full_name: true,
+        avatar_url: true,
+        role: true,
+        updated_at: true,
+      },
+    });
+  }
+
+  async changePassword(userId: number, dto: ChangePasswordDto) {
+    const user = await this.prismaService.user.findUnique({
+      where: { user_id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isMatch = await bcrypt.compare(dto.oldPassword, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Old password is incorrect');
+    }
+
+    try {
+      const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+      await this.prismaService.user.update({
+        where: { user_id: userId },
+        data: { password: hashedPassword },
+      });
+      return 'Update password success';
+    } catch (error) {
+      throw new Error('Error updating password');
+    }
+  }
+
+  // Admin
+  async updateUserByAdmin(
+    id: number,
+    data: UpdateUserByAdminDto,
+  ): Promise<User> {
     const response = await this.prismaService.user.update({
-      where: {user_id: id},
-      data: data
-    })
+      where: { user_id: id },
+      data: data,
+    });
 
-    return response
+    return response;
   }
 
-  async deleteUserByAdmin(id: number):Promise<User> {
-    const response = await this.prismaService.user.delete({
-      where: {user_id: id}
-    })
+  async deleteUserByAdmin(id: number): Promise<User> {
+    const user = await this.prismaService.user.findUnique({
+      where: { user_id: id },
+    });
+    if (user) {
+      const response = await this.prismaService.user.delete({
+        where: { user_id: id },
+      });
 
-    return response
+      return response;
+    } else {
+      throw new NotFoundException('User not found');
+    }
   }
 
   async getUserByAdmin(query: FilterUserDto): Promise<any> {
     const page = Number(query.page) || 1;
     const item_in_page = Number(query.item_page) || 10;
     const search = query.search || '';
-
 
     const [user, count] = await this.prismaService.$transaction([
       this.prismaService.user.findMany({
@@ -204,7 +286,7 @@ export class UserService {
           is_2fa: true,
           is_verify: true,
           created_at: true,
-          updated_at: true
+          updated_at: true,
         },
         skip: (page - 1) * item_in_page,
         take: item_in_page,

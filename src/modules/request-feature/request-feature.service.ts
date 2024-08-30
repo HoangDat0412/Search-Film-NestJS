@@ -1,35 +1,101 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateFeatureRequestDto } from './dto/create-feature-request.dto';
-
+import { RequestFeature } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
 @Injectable()
 export class RequestFeatureService {
+  constructor(private prisma: PrismaService) {}
 
-    constructor (private prisma: PrismaService){}
+  async findAll(
+    searchQuery: string = '',
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    data: RequestFeature[];
+    total: number;
+    total_pages: number;
+    current_page: number;
+  }> {
+    // Tính số bản ghi cần phân trang
+    const [data, total] = await Promise.all([
+      this.prisma.requestFeature.findMany({
+        where: {
+          OR: [
+            { title: { contains: searchQuery, mode: 'insensitive' } },
+            { description: { contains: searchQuery, mode: 'insensitive' } },
+          ],
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.requestFeature.count({
+        where: {
+          OR: [
+            { title: { contains: searchQuery, mode: 'insensitive' } },
+            { description: { contains: searchQuery, mode: 'insensitive' } },
+          ],
+        },
+      }),
+    ]);
 
-    async createReqFeature (user_id: number, CreateFeatureRequestDto: CreateFeatureRequestDto) {
-        return await this.prisma.requestFeature.create({
-            data: {
-                title: CreateFeatureRequestDto.title,
-                description: CreateFeatureRequestDto.description,
-                user: {connect: {
-                    user_id
-                }}
-            }
-        })
-    }
+    // Tính số trang
+    const total_pages = Math.ceil(total / limit);
 
-    async getReqFeature () {
-        const reports = await this.prisma.requestFeature.findMany();
-        if(!reports) {
-            throw new HttpException("No Records", HttpStatus.NOT_FOUND);
+    return {
+      data,
+      total,
+      total_pages,
+      current_page: page,
+    };
+  }
+
+  async findOne(feature_id: number): Promise<RequestFeature> {
+    return this.prisma.requestFeature.findUnique({ where: { feature_id } });
+  }
+
+  async create(data: {
+    user_id: number;
+    title: string;
+    url_image: string;
+    description: string;
+  }): Promise<RequestFeature> {
+    return this.prisma.requestFeature.create({ data });
+  }
+
+  async update(
+    feature_id: number,
+    data: {
+      title?: string;
+      url_image?: string;
+      description?: string;
+    },
+  ): Promise<RequestFeature> {
+    return this.prisma.requestFeature.update({ where: { feature_id }, data });
+  }
+
+  async remove(feature_id: number) {
+    // Tìm bản ghi cần xóa
+
+    const requestFeature = await this.findOne(feature_id);
+
+    // // Xóa tệp hình ảnh nếu tồn tại
+    if (requestFeature.url_image) {
+      const filePath = path.join(process.cwd(), requestFeature.url_image);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        } else {
+          console.warn('File not found:', filePath);
         }
-        return reports;
+      } catch (error) {
+        console.error('Error deleting file:', error);
+      }
     }
 
-    async deleteReqFeature (id: number) {
-        return this.prisma.requestFeature.delete({
-            where: {feature_id: id}
-        })
-    }
+    // // Xóa bản ghi khỏi cơ sở dữ liệu
+    return this.prisma.requestFeature.delete({
+      where: { feature_id },
+    });
+  }
 }

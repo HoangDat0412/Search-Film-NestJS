@@ -1,36 +1,67 @@
-import { Body, Controller, Delete, Get, Post, Req, UseFilters, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  UploadedFile,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ReportBugService } from './report-bug.service';
-import { CreateBugReportDto } from './dto/create-report-bug.dto';
+import { CreateReportBugDto } from './dto/create-report-bug.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
-import { AllExceptionsFilter } from '../all-exceptions/all-exceptions.filter';
 import { ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { createMulterOptions } from '../user/uploadFile/multer.config';
+import { RoleGuard } from '../auth/guards/role.guard';
 
 @Controller('report-bug')
 @ApiTags('report-bug')
 export class ReportBugController {
-    constructor(private readonly reportBugService: ReportBugService) {}
+  constructor(private readonly reportBugsService: ReportBugService) {}
 
-    @Post('reportbug')
-    @UseGuards(AuthGuard)
-    @UseFilters(AllExceptionsFilter)
-    async createReportBug (@Body() createReportBugDto: CreateBugReportDto, @Req() req: any) {
-        const user_id = req.user_data.user_id;
-        const report = await this.reportBugService.createReportBug(+user_id, createReportBugDto);
-        return report;
-    }
+  @Get()
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  async findAll(
+    @Query('search') search: string = '',
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    return this.reportBugsService.findAll(search, page, limit);
+  }
 
+  @Get(':bug_id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  async findOne(@Param('bug_id') bug_id: string) {
+    return this.reportBugsService.findOne(+bug_id);
+  }
 
-    @Get('reportbug')
-    @UseGuards(AuthGuard)
-    async getReports () {
-        const reports = await this.reportBugService.getReportBugs();
-        return reports;
-    }
+  @Post()
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor('file', createMulterOptions('reportbug')))
+  async create(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() createReportBugDto: CreateReportBugDto,
+    @Req() req: any
+  ) {
+    const url_image = `/uploads/reportbug/${file.filename}`;
+    const user_id = req.user_data.user_id;
+    return this.reportBugsService.create({
+      ...createReportBugDto,
+      url_image,
+      user_id
+    });
+  }
 
-    @Delete('reportbug')
-    @UseGuards(AuthGuard)
-    async deleteReport (@Body() {id}: {id; string}) {
-        const report = await this.reportBugService.deleteReportBug(+id);
-        return report;
-    }
+  @Delete(':bug_id')
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  async remove(@Param('bug_id') bug_id: string) {
+    return this.reportBugsService.remove(+bug_id);
+  }
 }
