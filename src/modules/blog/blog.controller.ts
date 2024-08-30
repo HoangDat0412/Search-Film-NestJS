@@ -19,8 +19,10 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { FindAllBlogDto } from './dto/find-all-blog.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('blog')
+@ApiTags('blog')
 export class BlogController {
   constructor(private readonly blogService: BlogService) {}
 

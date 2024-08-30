@@ -600,7 +600,47 @@ export class MovieService {
       throw new BadRequestException('Items per page must be greater than 0');
     }
 
-    // Fetch filtered movies
+    if(type !== ''){
+          // Fetch filtered movies
+    const [movies, totalMovies] = await Promise.all([
+      this.prisma.movie.findMany({
+        skip: (page - 1) * item_per_page,
+        take: item_per_page,
+        where: {
+          type:type,
+          OR: [
+            {
+              name: { contains: searchTerm, mode: 'insensitive' },
+            },
+          ],
+        },
+        orderBy: {
+          movie_id: 'desc',
+        },
+      }),
+      this.prisma.movie.count({
+        where: {
+          type: type,
+          OR: [
+            {
+              name: { contains: searchTerm, mode: 'insensitive' },
+            }
+          ],
+        },
+      }),
+    ]);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalMovies / item_per_page);
+
+    return {
+      movies,
+      totalMovies,
+      totalPages,
+      currentPage: page,
+    };
+    }else{
+          // Fetch filtered movies
     const [movies, totalMovies] = await Promise.all([
       this.prisma.movie.findMany({
         skip: (page - 1) * item_per_page,
@@ -717,6 +757,25 @@ export class MovieService {
       totalPages,
       currentPage: page,
     };
+    }
+
+  }
+
+  async incrementView(movieId: number): Promise<void> {
+    // Tìm bộ phim theo movieId
+    const movie = await this.prisma.movie.findUnique({
+      where: { movie_id: movieId },
+    });
+
+    if (!movie) {
+      throw new NotFoundException('Bộ phim không tìm thấy.');
+    }
+
+    // Tăng lượt xem lên 1
+    await this.prisma.movie.update({
+      where: { movie_id: movieId },
+      data: { view: movie.view + 1 },
+    });
   }
 
   //fillter film nhiều lượt xem nhất

@@ -12,7 +12,6 @@ import {
   Req,
   UseFilters,
   UseGuards,
-
 } from '@nestjs/common';
 import { CommentService } from '../comment/comment.service';
 import { AddCommentDto } from '../comment/dto/add-comment.dto';
@@ -94,6 +93,18 @@ export class MovieController {
     return rates;
   }
 
+  @Get('usergetrating/:movieId')
+  async getUserRating(
+    @Param('movieId') movieId: string,
+    @Req() req: any,
+  ): Promise<any> {
+    // Gọi service để lấy đánh giá
+    return this.ratingService.getRatingByUserAndMovie(
+      +req.user_data.user_id,
+      +movieId,
+    );
+  }
+
   // #################### PLAYLIST ######################
   @Post(':id/playlist')
   @UseGuards(AuthGuard)
@@ -168,6 +179,12 @@ export class MovieController {
     return this.movieService.getById(Number(id));
   }
 
+  @Get('view/:movieId')
+  async incrementView(@Param('movieId') movieId: string): Promise<void> {
+    // Gọi service để tăng lượt xem
+    return this.movieService.incrementView(+movieId);
+  }
+
   //##################### COUNTRY ###########################
 
   @Get('countrie/countries')
@@ -207,7 +224,6 @@ export class MovieController {
 
   //##################### EPISODE ###########################
 
- 
   @Post('episode/:movieId')
   @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   createEpisode(
@@ -231,7 +247,6 @@ export class MovieController {
       data,
     );
   }
-
 
   @Delete('episode/:episodeId')
   @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
