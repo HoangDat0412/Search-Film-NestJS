@@ -21,6 +21,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { mailerConfig } from './config/mailer.config';
 import { CountryModule } from './modules/country/country.module';
 import { BlogModule } from './modules/blog/blog.module';
+import { WatchlistModule } from './modules/watchlist/watchlist.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -49,6 +51,7 @@ import { BlogModule } from './modules/blog/blog.module';
       useFactory: mailerConfig,
       inject: [ConfigService],
     }),
+    WatchlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],

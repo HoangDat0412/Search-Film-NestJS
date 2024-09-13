@@ -12,6 +12,8 @@ import { SearchMovieDto } from './dtos/search-movie.dto';
 import { Country, Genre } from '@prisma/client';
 import { SearchFilmDto } from './dtos/search-film.dto';
 import { UpdateMovieDto } from './dtos/update-movie.dto';
+import { MovieRankingDto } from './dtos/movie-ranking.dto';
+import { FilterMovieDto } from './dtos/filter-movie.dto';
 
 @Injectable()
 export class MovieService {
@@ -294,6 +296,120 @@ export class MovieService {
       totalMovies,
       totalPages,
       currentPage: page,
+    };
+  }
+
+  async getRankedMovies(movieRankingDto: MovieRankingDto) {
+    const { page = 1, limit = 10 } = movieRankingDto;
+    const skip = (page - 1) * limit;
+  
+    const movies = await this.prisma.$queryRaw`
+      SELECT *
+      FROM "Movie"
+      WHERE "tmdb_vote_average" IS NOT NULL AND "tmdb_vote_count" IS NOT NULL
+      ORDER BY ("tmdb_vote_average" * "tmdb_vote_count") DESC
+      OFFSET ${skip}
+      LIMIT ${limit};
+    `;
+  
+    // Optional: get total count for pagination metadata
+    const totalMovies = await this.prisma.movie.count({
+      where: {
+        tmdb_vote_average: {
+          not: null,
+        },
+        tmdb_vote_count: {
+          not: null,
+        },
+      },
+    });
+  
+    return {
+      data: movies,
+      meta: {
+        total: totalMovies,
+        currentPage: page,
+        lastPage: Math.ceil(totalMovies / limit),
+      },
+    };
+  }
+
+  async filterMovies(filters: FilterMovieDto) {
+    const {
+      movie_country,
+      year,
+      movie_genre,
+      search_query,
+      tmdb_vote_average,
+      page = 1,
+      pageSize = 10,
+    } = filters;
+
+    // Validate page and pageSize
+    const validatedPage = Math.max(page, 1);
+    const validatedPageSize = Math.min(Math.max(pageSize, 1), 100);
+
+    const movies = await this.prisma.movie.findMany({
+      where: {
+        ...(search_query && {
+          name: {
+            contains: search_query,
+            mode: 'insensitive',
+          },
+        }),
+        ...(year && { year }),
+        ...(tmdb_vote_average !== undefined && { tmdb_vote_average }),
+        movie_countries: {
+          some: {
+            country_id: movie_country,
+          },
+        },
+        movie_genres: {
+          some: {
+            genre_id: movie_genre,
+          },
+        },
+      },
+      include: {
+        movie_genres: true,
+        movie_countries: true,
+      },
+      skip: (validatedPage - 1) * validatedPageSize,
+      take: validatedPageSize,
+    });
+
+    // Get the total count for pagination metadata
+    const totalCount = await this.prisma.movie.count({
+      where: {
+        ...(search_query && {
+          name: {
+            contains: search_query,
+            mode: 'insensitive',
+          },
+        }),
+        ...(year && { year }),
+        ...(tmdb_vote_average !== undefined && { tmdb_vote_average }),
+        movie_countries: {
+          some: {
+            country_id: movie_country,
+          },
+        },
+        movie_genres: {
+          some: {
+            genre_id: movie_genre,
+          },
+        },
+      },
+    });
+
+    return {
+      movies,
+      pagination: {
+        page: validatedPage,
+        pageSize: validatedPageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / validatedPageSize),
+      },
     };
   }
 
@@ -600,165 +716,160 @@ export class MovieService {
       throw new BadRequestException('Items per page must be greater than 0');
     }
 
-    if(type !== ''){
-          // Fetch filtered movies
-    const [movies, totalMovies] = await Promise.all([
-      this.prisma.movie.findMany({
-        skip: (page - 1) * item_per_page,
-        take: item_per_page,
-        where: {
-          type:type,
-          OR: [
-            {
-              name: { contains: searchTerm, mode: 'insensitive' },
-            },
-          ],
-        },
-        orderBy: {
-          movie_id: 'desc',
-        },
-      }),
-      this.prisma.movie.count({
-        where: {
-          type: type,
-          OR: [
-            {
-              name: { contains: searchTerm, mode: 'insensitive' },
-            }
-          ],
-        },
-      }),
-    ]);
+    if (type !== '') {
+      const [movies, totalMovies] = await Promise.all([
+        this.prisma.movie.findMany({
+          skip: (page - 1) * item_per_page,
+          take: item_per_page,
+          where: {
+            type: type,
+            OR: [
+              {
+                name: { contains: searchTerm, mode: 'insensitive' },
+              },
+            ],
+          },
+          orderBy: {
+            movie_id: 'desc',
+          },
+        }),
+        this.prisma.movie.count({
+          where: {
+            type: type,
+            OR: [
+              {
+                name: { contains: searchTerm, mode: 'insensitive' },
+              },
+            ],
+          },
+        }),
+      ]);
 
-    // Calculate total pages
-    const totalPages = Math.ceil(totalMovies / item_per_page);
+      // Calculate total pages
+      const totalPages = Math.ceil(totalMovies / item_per_page);
 
-    return {
-      movies,
-      totalMovies,
-      totalPages,
-      currentPage: page,
-    };
-    }else{
-          // Fetch filtered movies
-    const [movies, totalMovies] = await Promise.all([
-      this.prisma.movie.findMany({
-        skip: (page - 1) * item_per_page,
-        take: item_per_page,
-        where: {
-          OR: [
-            {
-              name: { contains: searchTerm, mode: 'insensitive' },
-            },
-            {
-              origin_name: { contains: searchTerm, mode: 'insensitive' },
-            },
-            {
-              type: { contains: type, mode: 'insensitive' },
-            },
-            {
-              movie_genres: {
-                some: {
-                  genre: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+      return {
+        movies,
+        totalMovies,
+        totalPages,
+        currentPage: page,
+      };
+    } else {
+      // Fetch filtered movies
+      const [movies, totalMovies] = await Promise.all([
+        this.prisma.movie.findMany({
+          skip: (page - 1) * item_per_page,
+          take: item_per_page,
+          where: {
+            OR: [
+              {
+                name: { contains: searchTerm, mode: 'insensitive' },
+              },
+              {
+                origin_name: { contains: searchTerm, mode: 'insensitive' },
+              },
+              {
+                movie_genres: {
+                  some: {
+                    genre: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-            {
-              movie_directors: {
-                some: {
-                  director: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+              {
+                movie_directors: {
+                  some: {
+                    director: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-            {
-              movie_actors: {
-                some: {
-                  actor: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+              {
+                movie_actors: {
+                  some: {
+                    actor: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-            {
-              movie_countries: {
-                some: {
-                  country: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+              {
+                movie_countries: {
+                  some: {
+                    country: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-          ],
-        },
-        orderBy: {
-          movie_id: 'desc',
-        },
-      }),
-      this.prisma.movie.count({
-        where: {
-          OR: [
-            {
-              name: { contains: searchTerm, mode: 'insensitive' },
-            },
-            {
-              origin_name: { contains: searchTerm, mode: 'insensitive' },
-            },
-            {
-              movie_genres: {
-                some: {
-                  genre: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+            ],
+          },
+          orderBy: {
+            movie_id: 'desc',
+          },
+        }),
+        this.prisma.movie.count({
+          where: {
+            OR: [
+              {
+                name: { contains: searchTerm, mode: 'insensitive' },
+              },
+              {
+                origin_name: { contains: searchTerm, mode: 'insensitive' },
+              },
+              {
+                movie_genres: {
+                  some: {
+                    genre: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-            {
-              movie_directors: {
-                some: {
-                  director: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+              {
+                movie_directors: {
+                  some: {
+                    director: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-            {
-              movie_actors: {
-                some: {
-                  actor: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+              {
+                movie_actors: {
+                  some: {
+                    actor: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-            {
-              movie_countries: {
-                some: {
-                  country: {
-                    name: { contains: searchTerm, mode: 'insensitive' },
+              {
+                movie_countries: {
+                  some: {
+                    country: {
+                      name: { contains: searchTerm, mode: 'insensitive' },
+                    },
                   },
                 },
               },
-            },
-          ],
-        },
-      }),
-    ]);
+            ],
+          },
+        }),
+      ]);
 
-    // Calculate total pages
-    const totalPages = Math.ceil(totalMovies / item_per_page);
+      // Calculate total pages
+      const totalPages = Math.ceil(totalMovies / item_per_page);
 
-    return {
-      movies,
-      totalMovies,
-      totalPages,
-      currentPage: page,
-    };
+      return {
+        movies,
+        totalMovies,
+        totalPages,
+        currentPage: page,
+      };
     }
-
   }
 
   async incrementView(movieId: number): Promise<void> {

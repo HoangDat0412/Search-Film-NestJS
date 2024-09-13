@@ -14,67 +14,73 @@ datasource db {
 }
 
 model User {
-  user_id         Int              @id @default(autoincrement())
-  username        String           @unique
-  password        String
-  is_verify       Boolean          @default(false)
-  is_2fa          Boolean          @default(false)
-  email           String           @unique
-  full_name       String?
-  avatar_url      String?
-  role            String           @default("user")
-  google_id       String?          @unique
-  facebook_id     String?          @unique
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @default(now())
-  ratings         Rating[]
-  comments        Comment[]
-  notifications   Notification[]
-  watch_histories WatchHistory[]
-  permissions     Permission[]
-  activity_logs   ActivityLog[]
-  categories      Category[]
-  blogs           Blog[]
-  blog_comments   BlogComment[]
-  ReportBug       ReportBug[]
-  RequestFeature  RequestFeature[]
+  user_id           Int                 @id @default(autoincrement())
+  username          String              @unique
+  password          String
+  is_verify         Boolean             @default(false)
+  is_2fa            Boolean             @default(false)
+  email             String              @unique
+  full_name         String?
+  avatar_url        String?
+  role              String              @default("user")
+  google_id         String?             @unique
+  facebook_id       String?             @unique
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @default(now())
+  bio               String?
+  ratings           Rating[]
+  comments          Comment[]
+  notifications     Notification[]
+  watch_histories   WatchHistory[]
+  permissions       Permission[]
+  activity_logs     ActivityLog[]
+  categories        Category[]
+  blogs             Blog[]
+  blog_comments     BlogComment[]
+  ReportBug         ReportBug[]
+  RequestFeature    RequestFeature[]
+  RatingLikeDislike RatingLikeDislike[]
+  Watchlist         Watchlist[]
 }
 
 model Movie {
-  movie_id        Int             @id @default(autoincrement())
-  name            String
-  origin_name     String?
-  content         String?
-  type            String          @default("single")
-  status          String?
-  thumb_url       String?
-  trailer_url     String?
-  duration        String?
-  episode_current String?
-  episode_total   String?
-  quality         String?
-  lang            String?
-  notify          String?
-  showtimes       String?
-  slug            String          @unique
-  year            Int?
-  view            Int             @default(0)
-  is_copyright    Boolean         @default(false)
-  chieurap        Boolean         @default(false)
-  poster_url      String?
-  sub_docquyen    Boolean         @default(false)
-  created_at      DateTime        @default(now())
-  updated_at      DateTime        @default(now())
-  episodes        Episode[]
-  movie_genres    MovieGenre[]
-  movie_countries MovieCountry[]
-  movie_actors    MovieActor[]
-  movie_directors MovieDirector[]
-  ratings         Rating[]
-  comments        Comment[]
-  watch_histories WatchHistory[]
-  category_movies CategoryMovie[]
-  blogs           Blog[]
+  movie_id          Int             @id @default(autoincrement())
+  name              String
+  origin_name       String?
+  content           String?
+  type              String          @default("single")
+  status            String?
+  thumb_url         String?
+  trailer_url       String?
+  duration          String?
+  episode_current   String?
+  episode_total     String?
+  quality           String?
+  lang              String?
+  notify            String?
+  showtimes         String?
+  tmdb_vote_average Float? // New field for vote average
+  tmdb_vote_count   Int? // New field for vote count
+  slug              String          @unique
+  year              Int?
+  view              Int             @default(0)
+  is_copyright      Boolean         @default(false)
+  chieurap          Boolean         @default(false)
+  poster_url        String?
+  sub_docquyen      Boolean         @default(false)
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @default(now())
+  episodes          Episode[]
+  movie_genres      MovieGenre[]
+  movie_countries   MovieCountry[]
+  movie_actors      MovieActor[]
+  movie_directors   MovieDirector[]
+  ratings           Rating[]
+  comments          Comment[]
+  watch_histories   WatchHistory[]
+  category_movies   CategoryMovie[]
+  blogs             Blog[]
+  Watchlist         Watchlist[]
 }
 
 model Episode {
@@ -153,14 +159,40 @@ model MovieDirector {
 }
 
 model Rating {
-  rating_id  Int      @id @default(autoincrement())
-  movie_id   Int
+  rating_id         Int                 @id @default(autoincrement())
+  movie_id          Int
+  user_id           Int
+  score             Int
+  review            String?
+  created_at        DateTime            @default(now())
+  movie             Movie               @relation(fields: [movie_id], references: [movie_id])
+  user              User                @relation(fields: [user_id], references: [user_id])
+  RatingLikeDislike RatingLikeDislike[]
+}
+
+model RatingLikeDislike {
+  id         Int      @id @default(autoincrement())
   user_id    Int
-  score      Int
-  review     String?
+  rating_id  Int
+  is_like    Boolean // true: like, false: dislike
   created_at DateTime @default(now())
-  movie      Movie    @relation(fields: [movie_id], references: [movie_id])
-  user       User     @relation(fields: [user_id], references: [user_id])
+
+  rating Rating @relation(fields: [rating_id], references: [rating_id])
+  user   User   @relation(fields: [user_id], references: [user_id])
+
+  @@unique([user_id, rating_id]) // Một người dùng chỉ có thể like/dislike một rating một lần
+}
+
+model Watchlist {
+  watchlist_id Int      @id @default(autoincrement())
+  user_id      Int
+  movie_id     Int
+  added_at     DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [user_id])
+  movie Movie @relation(fields: [movie_id], references: [movie_id])
+
+  @@unique([user_id, movie_id]) // Đảm bảo mỗi phim chỉ xuất hiện một lần trong danh sách của mỗi người dùng
 }
 
 model Comment {

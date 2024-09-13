@@ -53,13 +53,14 @@ export class PlaylistController {
     );
   }
 
+  // delete một playlist film
   @Delete(':playlistId')
   async deletePlaylist(@Param('playlistId') id: string, @Req() req: any) {
     const userId = req.user_data.user_id; //sau thay token
     const playlist = await this.playlistService.deletePlaylist(+id, +userId);
     return playlist;
   }
-
+  // delete một movie film from playlist 
   @Delete(':playlistId/movie')
   async removeMovieFromPlaylist(
     @Param('playlistId') category_id: string,

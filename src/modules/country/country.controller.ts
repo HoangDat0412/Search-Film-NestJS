@@ -27,7 +27,6 @@ export class CountryController {
   }
 
   @Get()
-  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   findAll(): Promise<Country[]> {
     return this.countryService.findAll();
   }

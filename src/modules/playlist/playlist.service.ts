@@ -17,7 +17,18 @@ export class PlaylistService {
 
   async getPlaylists(userId: number) {
     return this.prisma.category.findMany({
-      where: { user_id: userId },
+      include: {
+        category_movies: {
+          take: 1, // Lấy bộ phim đầu tiên
+          include: {
+            movie: {
+              select: {
+                poster_url: true, // Chỉ lấy poster_url
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -66,7 +77,7 @@ export class PlaylistService {
       where: { category_id: categoryId },
     });
 
-    if (!category || category.user_id === userId) {
+    if (!category || category.user_id !== userId) {
       throw new ForbiddenException(
         'Bạn không có quyền truy cập vào danh mục này.',
       );
@@ -82,12 +93,12 @@ export class PlaylistService {
       },
     });
 
-
     const totalMovies = await this.prisma.categoryMovie.count({
       where: { category_id: categoryId },
     });
 
     return {
+      playlist_name: category.name,
       movies: movies.map((cm) => cm.movie),
       total: totalMovies,
       page,

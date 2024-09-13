@@ -23,7 +23,8 @@ export class GenreService {
 
     // Validate page and item_per_page
     if (page < 1) throw new Error('Page must be greater than 0');
-    if (item_per_page < 1) throw new Error('Items per page must be greater than 0');
+    if (item_per_page < 1)
+      throw new Error('Items per page must be greater than 0');
 
     // Tính tổng số bản ghi
     const [genres, totalGenres] = await Promise.all([
@@ -51,7 +52,8 @@ export class GenreService {
 
     // Validate page and item_per_page
     if (page < 1) throw new Error('Page must be greater than 0');
-    if (item_per_page < 1) throw new Error('Items per page must be greater than 0');
+    if (item_per_page < 1)
+      throw new Error('Items per page must be greater than 0');
 
     // Tính tổng số bản ghi theo điều kiện tìm kiếm
     const [genres, totalGenres] = await Promise.all([
@@ -84,7 +86,6 @@ export class GenreService {
       items: genres,
     };
   }
-
 
   async updateGenre(genre_id: number, data: CreateGenreDto) {
     const slug = data.name.replaceAll(' ', '-').toLowerCase();

@@ -29,6 +29,7 @@ import { UpdateUsernameDto } from './dtos/update-username.dto';
 import { UpdateEmailDto } from './dtos/update-email.dto';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { createMulterOptions } from './uploadFile/multer.config';
+import { StatisticsDto } from './dtos/statistics.dto';
 
 @Controller('users')
 @ApiTags('users')
@@ -39,6 +40,7 @@ export class UserController {
     private userService: UserService,
   ) {}
 
+  // #################### PLAYLIST ######################
   @Post('playlists')
   @UseGuards(AuthGuard)
   async createPlaylist(
@@ -61,7 +63,7 @@ export class UserController {
     return playlists;
   }
 
-
+  // #################### USER ######################
 
   @Get('get/me')
   @UseGuards(AuthGuard)
@@ -101,6 +103,12 @@ export class UserController {
       req.user_data.user_id,
       updateUsernameDto,
     );
+  }
+
+  @Patch('/bio')
+  @UseGuards(AuthGuard)
+  async updateBio(@Req() req, @Body() updateUsernameDto: any) {
+    return this.userService.updateBio(req.user_data.user_id, updateUsernameDto);
   }
 
   @Patch('/email')
@@ -161,5 +169,10 @@ export class UserController {
   @UseGuards(AuthGuard, new RoleGuard(['admin']))
   getUserByAdmin(@Query() query: FilterUserDto) {
     return this.userService.getUserByAdmin(query);
+  }
+
+  @Get('dashboard/static')
+  async getStatistics(): Promise<StatisticsDto> {
+    return this.userService.getStatistics();
   }
 }

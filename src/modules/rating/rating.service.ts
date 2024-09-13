@@ -40,7 +40,68 @@ export class RatingService {
     });
   }
 
-  async getRate(movie_id: number) {
+  async getMovieRatings(movieId: number, userId: number) {
+    const ratings = await this.prisma.rating.findMany({
+      where: { movie_id: movieId },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+            avatar_url: true,
+          },
+        }
+      },
+    });
+
+    const formattedRatings = await Promise.all(
+      ratings.map(async (rating) => {
+        // Đếm số lượng like và dislike
+        const likeCount = await this.prisma.ratingLikeDislike.count({
+          where: { rating_id: rating.rating_id, is_like: true },
+        });
+        const dislikeCount = await this.prisma.ratingLikeDislike.count({
+          where: { rating_id: rating.rating_id, is_like: false },
+        });
+
+        // Kiểm tra xem người dùng đã like hoặc dislike rating này chưa
+        const userLikeDislike = await this.prisma.ratingLikeDislike.findUnique({
+          where: {
+            user_id_rating_id: {
+              user_id: userId,
+              rating_id: rating.rating_id,
+            },
+          },
+        });
+
+        return {
+          ...rating,
+          likeCount,
+          dislikeCount,
+          userAction: userLikeDislike
+            ? userLikeDislike.is_like
+              ? 'like'
+              : 'dislike'
+            : null, // Trả về trạng thái của người dùng
+        };
+      }),
+    );
+
+    // Tính điểm trung bình của bộ phim
+    const averageScore = await this.prisma.rating.aggregate({
+      where: { movie_id: movieId },
+      _avg: {
+        score: true,
+      },
+    });
+
+    return {
+      ratings: formattedRatings,
+      averageScore: averageScore._avg.score || 0, // Trả về điểm trung bình, nếu không có thì mặc định là 0
+    };
+  }
+
+  async getListRating(movie_id: number) {
     return this.prisma.rating.findMany({
       where: { movie_id },
     });
@@ -99,5 +160,82 @@ export class RatingService {
     }
 
     return rating;
+  }
+
+  async likeRating(userId: number, ratingId: number) {
+    // Kiểm tra xem đã có like/dislike chưa
+    const existing = await this.prisma.ratingLikeDislike.findUnique({
+      where: {
+        user_id_rating_id: { user_id: userId, rating_id: ratingId },
+      },
+    });
+
+    if (existing) {
+      if (existing.is_like) {
+        // Người dùng đã like, nên bỏ like
+        await this.prisma.ratingLikeDislike.delete({
+          where: {
+            id: existing.id,
+          },
+        });
+      } else {
+        // Đang dislike, chuyển sang like
+        await this.prisma.ratingLikeDislike.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            is_like: true,
+          },
+        });
+      }
+    } else {
+      // Thêm like mới
+      await this.prisma.ratingLikeDislike.create({
+        data: {
+          user_id: userId,
+          rating_id: ratingId,
+          is_like: true,
+        },
+      });
+    }
+  }
+
+  async dislikeRating(userId: number, ratingId: number) {
+    const existing = await this.prisma.ratingLikeDislike.findUnique({
+      where: {
+        user_id_rating_id: { user_id: userId, rating_id: ratingId },
+      },
+    });
+
+    if (existing) {
+      if (!existing.is_like) {
+        // Đã dislike, nên bỏ dislike
+        await this.prisma.ratingLikeDislike.delete({
+          where: {
+            id: existing.id,
+          },
+        });
+      } else {
+        // Đang like, chuyển sang dislike
+        await this.prisma.ratingLikeDislike.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            is_like: false,
+          },
+        });
+      }
+    } else {
+      // Thêm dislike mới
+      await this.prisma.ratingLikeDislike.create({
+        data: {
+          user_id: userId,
+          rating_id: ratingId,
+          is_like: false,
+        },
+      });
+    }
   }
 }

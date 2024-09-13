@@ -12,6 +12,7 @@ import { User } from '@prisma/client';
 import { UpdateUsernameDto } from './dtos/update-username.dto';
 import { UpdateEmailDto } from './dtos/update-email.dto';
 import { ChangePasswordDto } from './dtos/change-password.dto';
+import { StatisticsDto } from './dtos/statistics.dto';
 
 @Injectable()
 export class UserService {
@@ -43,6 +44,7 @@ export class UserService {
         email: true,
         avatar_url: true,
         role: true,
+        bio: true,
         facebook_id: true,
         google_id: true,
         is_2fa: true,
@@ -178,10 +180,25 @@ export class UserService {
         avatar_url: true,
         role: true,
         updated_at: true,
+        bio: true
       },
     });
   }
-
+  async updateBio(userId: number, dto: any) {
+    return await this.prismaService.user.update({
+      where: { user_id: userId },
+      data: { bio: dto.bio },
+      select: {
+        username: true,
+        email: true,
+        full_name: true,
+        avatar_url: true,
+        role: true,
+        updated_at: true,
+        bio: true
+      },
+    });
+  }
   async updateEmail(userId: number, dto: UpdateEmailDto) {
     return await this.prismaService.user.update({
       where: { user_id: userId },
@@ -193,6 +210,7 @@ export class UserService {
         avatar_url: true,
         role: true,
         updated_at: true,
+        bio: true
       },
     });
   }
@@ -318,6 +336,126 @@ export class UserService {
     return {
       user,
       count,
+    };
+  }
+
+  async getStatistics(): Promise<StatisticsDto> {
+    const [totalFilms, filmsThisWeek] = await Promise.all([
+      this.prismaService.movie.count(),
+      this.prismaService.movie.count({
+        where: {
+          created_at: {
+            gte: new Date(new Date().setDate(new Date().getDate() - 7))
+          }
+        }
+      }),
+    ]);
+
+    const [totalActivatedUsers, usersThisWeek] = await Promise.all([
+      this.prismaService.user.count({ where: { is_verify: true } }),
+      this.prismaService.user.count({
+        where: {
+          is_verify: true,
+          created_at: {
+            gte: new Date(new Date().setDate(new Date().getDate() - 7))
+          }
+        }
+      })
+    ]);
+
+    const [totalRates, ratesThisWeek] = await Promise.all([
+      this.prismaService.rating.count(),
+      this.prismaService.rating.count({
+        where: {
+          created_at: {
+            gte: new Date(new Date().setDate(new Date().getDate() - 7))
+          }
+        }
+      })
+    ]);
+
+    const [totalReportBugs, bugsThisWeek] = await Promise.all([
+      this.prismaService.reportBug.count(),
+      this.prismaService.reportBug.count({
+        where: {
+          created_at: {
+            gte: new Date(new Date().setDate(new Date().getDate() - 7))
+          }
+        }
+      })
+    ]);
+
+    const [totalBlogs, blogsThisWeek] = await Promise.all([
+      this.prismaService.blog.count(),
+      this.prismaService.blog.count({
+        where: {
+          created_at: {
+            gte: new Date(new Date().setDate(new Date().getDate() - 7))
+          }
+        }
+      })
+    ]);
+
+    const [totalActors, actorsThisWeek] = await Promise.all([
+      this.prismaService.actor.count(),
+      this.prismaService.actor.count({
+        where: {
+          movie_actors: {
+            some: {
+              movie: {
+                created_at: {
+                  gte: new Date(new Date().setDate(new Date().getDate() - 7))
+                }
+              }
+            }
+          }
+        }
+      })
+    ]);
+
+    const [totalFilmTypes, filmTypesThisWeek] = await Promise.all([
+      this.prismaService.movieGenre.count(),
+      this.prismaService.movieGenre.count({
+        where: {
+          movie: {
+            created_at: {
+              gte: new Date(new Date().setDate(new Date().getDate() - 7))
+            }
+          }
+        }
+      })
+    ]);
+
+    const [totalCountries, countriesThisWeek] = await Promise.all([
+      this.prismaService.movieCountry.count(),
+      this.prismaService.movieCountry.count({
+        where: {
+          movie: {
+            created_at: {
+              gte: new Date(new Date().setDate(new Date().getDate() - 7))
+            }
+          }
+        }
+      })
+    ]);
+
+    return {
+      totalFilms,
+      filmsThisWeek,
+      totalActivatedUsers,
+      usersThisWeek,
+      totalRates,
+      ratesThisWeek,
+      totalReportBugs,
+      bugsThisWeek,
+      totalBlogs,
+      blogsThisWeek,
+      totalActors,
+      actorsThisWeek,
+      totalFilmTypes,
+      filmTypesThisWeek,
+      totalCountries,
+      countriesThisWeek
     };
   }
 }

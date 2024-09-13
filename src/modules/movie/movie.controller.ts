@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -29,6 +30,9 @@ import { UpdateEpisodeDto } from './dtos/update-episode.dto';
 import { GetTopMoviesDto } from './dtos/get-top-movies.dto';
 import { SearchFilmDto } from './dtos/search-film.dto';
 import { UpdateMovieDto } from './dtos/update-movie.dto';
+import { MovieRankingDto } from './dtos/movie-ranking.dto';
+import { FilterMovieDto } from './dtos/filter-movie.dto';
+import { validate } from 'class-validator';
 
 @Controller('movies')
 @ApiTags('movies')
@@ -86,11 +90,17 @@ export class MovieController {
     return rating;
   }
 
+  // @Get(':id/rating')
+  // @ApiOperation({ summary: "Get all movie's rating" })
+  // async getRating(@Param('id') movieId: string) {
+  //   // const rates = await this.ratingService.getRate(+movieId);
+  //   // return rates;
+  // }
   @Get(':id/rating')
-  @ApiOperation({ summary: "Get all movie's rating" })
-  async getRating(@Param('id') movieId: string) {
-    const rates = await this.ratingService.getRate(+movieId);
-    return rates;
+  @UseGuards(AuthGuard)
+  async getMovieRatings(@Param('id') movieId: string, @Req() req: any) {
+    const userId = req.user_data.user_id; //sau thay token
+    return this.ratingService.getMovieRatings(+movieId, +userId);
   }
 
   @Get('usergetrating/:movieId')
@@ -121,6 +131,40 @@ export class MovieController {
   }
 
   //##################### MOVIE ###########################
+
+  @Get('ranking/search')
+  async getMovieRanking(@Query() movieRankingDto: MovieRankingDto) {
+    return this.movieService.getRankedMovies(movieRankingDto);
+  }
+
+  @Get('filter/search')
+  async filterMovies(@Query() query: any) {
+    const filters: FilterMovieDto = {
+      movie_country: query.movie_country
+        ? parseInt(query.movie_country, 10)
+        : undefined,
+      year: query.year ? parseInt(query.year, 10) : undefined,
+      movie_genre: query.movie_genre
+        ? parseInt(query.movie_genre, 10)
+        : undefined,
+      search_query: query.search_query,
+      tmdb_vote_average: query.tmdb_vote_average
+        ? parseFloat(query.tmdb_vote_average)
+        : undefined,
+      page: query.page ? parseInt(query.page, 10) : undefined,
+      pageSize: query.pageSize ? parseInt(query.pageSize, 10) : undefined,
+    };
+
+    // Validate DTO
+    const validatedFilters = new FilterMovieDto();
+    Object.assign(validatedFilters, filters);
+    const errors = await validate(validatedFilters);
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    return this.movieService.filterMovies(validatedFilters);
+  }
 
   @Post()
   @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
