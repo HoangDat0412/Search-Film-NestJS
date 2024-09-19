@@ -23,6 +23,22 @@ export class WatchlistService {
     }
   }
 
+  async isMovieInWatchlist(checkWatchlistDTO: {
+    user_id: number;
+    movie_id: number;
+  }): Promise<boolean> {
+    const { user_id, movie_id } = checkWatchlistDTO;
+
+    const watchlist = await this.prisma.watchlist.findFirst({
+      where: {
+        user_id: user_id,
+        movie_id: movie_id,
+      },
+    });
+
+    return watchlist !== null;
+  }
+
   async getUserWatchlist(userId: number) {
     return await this.prisma.watchlist.findMany({
       where: {

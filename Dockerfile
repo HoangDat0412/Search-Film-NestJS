@@ -20,7 +20,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Expose port mà ứng dụng sẽ chạy trên đó
-EXPOSE 3000
+EXPOSE 80
 
 # Lệnh để chạy ứng dụng
 CMD ["npm", "run", "start:prod"]

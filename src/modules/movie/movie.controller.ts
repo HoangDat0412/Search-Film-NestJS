@@ -33,6 +33,7 @@ import { UpdateMovieDto } from './dtos/update-movie.dto';
 import { MovieRankingDto } from './dtos/movie-ranking.dto';
 import { FilterMovieDto } from './dtos/filter-movie.dto';
 import { validate } from 'class-validator';
+import { FilterMostViewDTO } from './dtos/filter-most-view.dto';
 
 @Controller('movies')
 @ApiTags('movies')
@@ -164,6 +165,11 @@ export class MovieController {
     }
 
     return this.movieService.filterMovies(validatedFilters);
+  }
+
+  @Get('filter/mostview')
+  async getMoviesFiltered(@Query() filterMostViewDTO: FilterMostViewDTO) {
+    return this.movieService.getFilteredMovies(filterMostViewDTO);
   }
 
   @Post()

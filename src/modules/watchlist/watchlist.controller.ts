@@ -21,4 +21,18 @@ export class WatchlistController {
     const userId = req.user_data.user_id;
     return this.watchlistService.getUserWatchlist(+userId);
   }
+
+  @Get('check/:movie_id') // Get movie_id from the URL
+  @UseGuards(AuthGuard)
+  async checkMovieInWatchlist(
+    @Req() req: any,
+    @Param('movie_id') movie_id: string,
+  ): Promise<{ isInWatchlist: boolean }> {
+    const user_id = req.user_data.user_id;
+    const isInWatchlist = await this.watchlistService.isMovieInWatchlist({
+      user_id,
+      movie_id: +movie_id, // Convert movie_id from string to number
+    });
+    return { isInWatchlist };
+  }
 }

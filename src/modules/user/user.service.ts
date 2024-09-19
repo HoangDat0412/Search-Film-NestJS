@@ -334,8 +334,10 @@ export class UserService {
     ]);
 
     return {
+      page,
       user,
       count,
+      totalPages: Math.ceil(count / item_in_page),
     };
   }
 

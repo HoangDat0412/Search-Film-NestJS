@@ -1,16 +1,25 @@
-import { IsNumber, IsOptional, Min } from 'class-validator';
+import { IsOptional, IsInt, IsPositive } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MovieRankingDto {
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  page?: number = 1; 
+  @Type(() => Number) // Converts string to a number
+  @IsInt()
+  @IsPositive()
+  page?: number;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  limit?: number = 24;
+  @Type(() => Number) // Converts string to a number
+  @IsInt()
+  @IsPositive()
+  limit?: number;
+
+  @IsOptional()
+  year?: string;
+
+  @IsOptional()
+  genre?: string;
+
+  @IsOptional()
+  country?: string;
 }

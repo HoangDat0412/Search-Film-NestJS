@@ -66,6 +66,56 @@ export class BlogService {
     };
   }
 
+  //findAllBlog
+  async findAllBlog(page: number, limit: number, searchTerm?: string) {
+    const blogs = await this.prisma.blog.findMany({
+      where: {
+        OR: [
+          {
+            title: {
+              contains: searchTerm,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: {
+        created_at: 'desc',
+      },
+      include: {
+        user: {
+          select: {
+            username: true,
+            avatar_url: true,
+          },
+        },
+      },
+    });
+
+    const totalCount = await this.prisma.blog.count({
+      where: {
+        OR: [
+          {
+            title: {
+              contains: searchTerm,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      },
+    });
+
+    return {
+      data: blogs,
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+    };
+  }
+
   async findOne(id: number) {
     return this.prisma.blog.findUnique({
       where: { blog_id: id },

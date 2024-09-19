@@ -41,6 +41,7 @@ model User {
   RequestFeature    RequestFeature[]
   RatingLikeDislike RatingLikeDislike[]
   Watchlist         Watchlist[]
+  failed_attempts   Int                 @default(0) // Add this line
 }
 
 model Movie {

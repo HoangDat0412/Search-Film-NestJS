@@ -74,6 +74,14 @@ export class BlogController {
     return this.blogService.findAll(page, limit, searchTerm);
   }
 
+  @Get('admin/getall')
+  adminFindAll(@Query() query: FindAllBlogDto) {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const searchTerm = query.searchTerm || ''
+    return this.blogService.findAllBlog(page, limit, searchTerm);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.blogService.findOne(+id);

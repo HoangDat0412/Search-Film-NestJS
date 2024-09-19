@@ -14,6 +14,7 @@ import { SearchFilmDto } from './dtos/search-film.dto';
 import { UpdateMovieDto } from './dtos/update-movie.dto';
 import { MovieRankingDto } from './dtos/movie-ranking.dto';
 import { FilterMovieDto } from './dtos/filter-movie.dto';
+import { FilterMostViewDTO } from './dtos/filter-most-view.dto';
 
 @Injectable()
 export class MovieService {
@@ -298,32 +299,63 @@ export class MovieService {
       currentPage: page,
     };
   }
-
   async getRankedMovies(movieRankingDto: MovieRankingDto) {
-    const { page = 1, limit = 10 } = movieRankingDto;
+    const { page = 1, limit = 10, year, genre, country } = movieRankingDto;
     const skip = (page - 1) * limit;
-  
-    const movies = await this.prisma.$queryRaw`
-      SELECT *
-      FROM "Movie"
-      WHERE "tmdb_vote_average" IS NOT NULL AND "tmdb_vote_count" IS NOT NULL
-      ORDER BY ("tmdb_vote_average" * "tmdb_vote_count") DESC
-      OFFSET ${skip}
-      LIMIT ${limit};
-    `;
-  
-    // Optional: get total count for pagination metadata
-    const totalMovies = await this.prisma.movie.count({
-      where: {
-        tmdb_vote_average: {
-          not: null,
+
+    // Initialize base where conditions
+    const whereConditions: any = {
+      tmdb_vote_average: { not: null },
+      tmdb_vote_count: { not: null },
+    };
+
+    // Add year filter if provided and valid
+    console.log(typeof year);
+
+    if (year) {
+      const yearNumber = parseInt(year); // Convert string to number
+      if (!isNaN(yearNumber)) {
+        whereConditions.year = yearNumber;
+      }
+    }
+
+    // Add genre filter if provided
+    if (genre) {
+      whereConditions.movie_genres = {
+        some: {
+          genre: {
+            name: genre,
+          },
         },
-        tmdb_vote_count: {
-          not: null,
+      };
+    }
+
+    // Add country filter if provided
+    if (country) {
+      whereConditions.movie_countries = {
+        some: {
+          country: {
+            name: country,
+          },
         },
+      };
+    }
+
+    // Fetch movies using Prisma ORM
+    const movies = await this.prisma.movie.findMany({
+      where: whereConditions,
+      orderBy: {
+        tmdb_vote_average: 'desc',
       },
+      skip,
+      take: limit,
     });
-  
+
+    // Get total count for pagination metadata
+    const totalMovies = await this.prisma.movie.count({
+      where: whereConditions,
+    });
+
     return {
       data: movies,
       meta: {
@@ -331,6 +363,83 @@ export class MovieService {
         currentPage: page,
         lastPage: Math.ceil(totalMovies / limit),
       },
+    };
+  }
+
+  async getFilteredMovies(filterMostViewDTO: FilterMostViewDTO) {
+    const {
+      year,
+      genre,
+      country,
+      search,
+      page = 1,
+      limit = 10,
+    } = filterMostViewDTO;
+    const skip = (page - 1) * limit;
+    // Build the filters
+    const filters: any = {};
+
+    if (year) {
+      filters.year = Number(year);
+    }
+
+    if (genre) {
+      filters.movie_genres = {
+        some: {
+          genre: {
+            name: genre,
+          },
+        },
+      };
+    }
+
+    if (country) {
+      filters.movie_countries = {
+        some: {
+          country: {
+            name: country,
+          },
+        },
+      };
+    }
+
+    if (search) {
+      filters.OR = [
+        {
+          name: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          origin_name: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    // Query the database with filters and pagination
+    const movies = await this.prisma.movie.findMany({
+      where: filters,
+      orderBy: {
+        view: 'desc', // Order by views in descending order
+      },
+      skip,
+      take: limit,
+    });
+
+    const totalMovies = await this.prisma.movie.count({
+      where: filters,
+    });
+
+    return {
+      data: movies,
+      total: totalMovies,
+      page,
+      limit,
+      totalPages: Math.ceil(totalMovies / limit),
     };
   }
 

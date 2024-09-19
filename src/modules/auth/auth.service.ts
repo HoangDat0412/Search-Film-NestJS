@@ -2,12 +2,12 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { RegisterDto } from './dtos/register.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-
 import { Login2faDto } from './dtos/login-2fa.dto';
 import { LoginDto } from './dtos/login.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 
 @Injectable()
 export class AuthService {
@@ -104,21 +104,50 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new HttpException('Email is not Exist', HttpStatus.BAD_GATEWAY);
+      throw new HttpException('Email does not exist', HttpStatus.BAD_REQUEST);
     }
 
+    // Nếu số lần đăng nhập sai lớn hơn hoặc bằng 3
+    if (user.failed_attempts >= 3) {
+      // Đã nhập sai 3 lần
+      // Kiểm tra reCAPTCHA
+      console.log('haha');
+
+      if (
+        !loginData.recaptchaToken ||
+        !(await this.verifyRecaptcha(loginData.recaptchaToken))
+      ) {
+        throw new HttpException(
+          'reCAPTCHA verification failed. Please try again.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    // Kiểm tra mật khẩu
     const checkPassword = await bcrypt.compare(
       loginData.password,
       user.password,
     );
 
+    // Nếu mật khẩu sai
     if (!checkPassword) {
-      throw new HttpException(
-        'Password is not correct',
-        HttpStatus.BAD_GATEWAY,
-      );
+      // Cập nhật số lần đăng nhập sai
+      await this.prismaService.user.update({
+        where: { email: loginData.email },
+        data: { failed_attempts: user.failed_attempts + 1 },
+      });
+
+      throw new HttpException('Password is incorrect', HttpStatus.BAD_REQUEST);
     }
 
+    // Đặt lại số lần đăng nhập sai khi đăng nhập thành công
+    await this.prismaService.user.update({
+      where: { email: loginData.email },
+      data: { failed_attempts: 0 },
+    });
+
+    // Kiểm tra xem tài khoản đã được kích hoạt chưa
     if (!user.is_verify) {
       throw new HttpException('Account not activated', HttpStatus.UNAUTHORIZED);
     }
@@ -131,7 +160,7 @@ export class AuthService {
       role: user.role,
     };
 
-    // generate otp and otp_token
+    // Xử lý Two-Factor Authentication nếu được bật
     if (user.is_2fa) {
       const otp = await this.generateOtp();
       const otp_token = await this.jwtService.signAsync(
@@ -142,11 +171,10 @@ export class AuthService {
         },
       );
 
-      // await this.mailerService.sendOtpEmail(user.email, otp);
-
       return { otp_token };
     }
 
+    // Tạo access_token và refresh_token
     const access_token = await this.jwtService.signAsync(payload, {
       expiresIn: '15m',
       secret: process.env.JWT_SECRET_KEY,
@@ -156,10 +184,23 @@ export class AuthService {
       expiresIn: '7d',
       secret: process.env.REFRESH_SECRET_KEY,
     });
+
     return {
       access_token,
       refresh_token,
     };
+  }
+
+  // Hàm kiểm tra reCAPTCHA
+  private async verifyRecaptcha(token: string): Promise<boolean> {
+    try {
+      const result = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SITE_KEY}&response=${token}`,
+      );
+      return result.data.success;
+    } catch (error) {
+      return false;
+    }
   }
 
   async login2fa(login2faData: Login2faDto): Promise<any> {
