@@ -55,13 +55,18 @@ export class PlaylistController {
 
   // delete một playlist film
   @Delete(':playlistId')
+  @UseGuards(AuthGuard)
   async deletePlaylist(@Param('playlistId') id: string, @Req() req: any) {
     const userId = req.user_data.user_id; //sau thay token
+    console.log('user id', userId);
+    console.log('playlist id', id);
+
     const playlist = await this.playlistService.deletePlaylist(+id, +userId);
     return playlist;
   }
   // delete một movie film from playlist 
   @Delete(':playlistId/movie')
+  @UseGuards(AuthGuard)
   async removeMovieFromPlaylist(
     @Param('playlistId') category_id: string,
     @Body() { movie_id }: { movie_id: string },

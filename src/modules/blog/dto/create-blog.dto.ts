@@ -10,9 +10,8 @@ export class CreateBlogDto {
   @IsNotEmpty()
   content: string;
 
-  @IsInt()
   @IsOptional()
-  movie_id?: number;
+  movie_id?: string;
 
   @IsString()
   @IsOptional()

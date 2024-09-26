@@ -29,10 +29,14 @@ export class RequestFeatureController {
   @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   async findAll(
     @Query('search') search: string = '',
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
   ) {
-    return this.requestFeaturesService.findAll(search, page, limit);
+    return this.requestFeaturesService.findAll(
+      search,
+      +page || 1,
+      +limit || 10,
+    );
   }
 
   @Get(':feature_id')

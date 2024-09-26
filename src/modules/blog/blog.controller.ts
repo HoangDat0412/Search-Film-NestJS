@@ -20,6 +20,7 @@ import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { FindAllBlogDto } from './dto/find-all-blog.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { title } from 'process';
 
 @Controller('blog')
 @ApiTags('blog')
@@ -38,9 +39,11 @@ export class BlogController {
   ) {
     const imageUrl = file ? `/uploads/BlogImages/${file.filename}` : null;
     return this.blogService.create({
-      ...createBlogDto,
+      title: createBlogDto.title,
+      content: createBlogDto.content,
       image_url: imageUrl,
       user_id: req.user_data.user_id,
+      movie_id: Number(createBlogDto.movie_id),
     });
   }
 
@@ -68,17 +71,17 @@ export class BlogController {
 
   @Get()
   findAll(@Query() query: FindAllBlogDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const searchTerm = query.searchTerm || ''
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const searchTerm = query.searchTerm || '';
     return this.blogService.findAll(page, limit, searchTerm);
   }
 
   @Get('admin/getall')
   adminFindAll(@Query() query: FindAllBlogDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const searchTerm = query.searchTerm || ''
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const searchTerm = query.searchTerm || '';
     return this.blogService.findAllBlog(page, limit, searchTerm);
   }
 

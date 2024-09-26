@@ -300,7 +300,8 @@ export class MovieService {
     };
   }
   async getRankedMovies(movieRankingDto: MovieRankingDto) {
-    const { page = 1, limit = 10, year, genre, country } = movieRankingDto;
+    const { page = 1, year, genre, country } = movieRankingDto;
+    const limit = Number(movieRankingDto.limit) || 10;
     const skip = (page - 1) * limit;
 
     // Initialize base where conditions
@@ -367,14 +368,9 @@ export class MovieService {
   }
 
   async getFilteredMovies(filterMostViewDTO: FilterMostViewDTO) {
-    const {
-      year,
-      genre,
-      country,
-      search,
-      page = 1,
-      limit = 10,
-    } = filterMostViewDTO;
+    const { year, genre, country, search, page = 1 } = filterMostViewDTO;
+    const limit = Number(filterMostViewDTO.limit) || 10;
+
     const skip = (page - 1) * limit;
     // Build the filters
     const filters: any = {};

@@ -17,6 +17,9 @@ export class PlaylistService {
 
   async getPlaylists(userId: number) {
     return this.prisma.category.findMany({
+      where: {
+        user_id: userId,
+      },
       include: {
         category_movies: {
           take: 1, // Lấy bộ phim đầu tiên

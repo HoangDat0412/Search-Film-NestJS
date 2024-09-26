@@ -9,9 +9,6 @@ export class MovieRankingDto {
   page?: number;
 
   @IsOptional()
-  @Type(() => Number) // Converts string to a number
-  @IsInt()
-  @IsPositive()
   limit?: number;
 
   @IsOptional()

@@ -25,7 +25,6 @@ export class FilterMostViewDTO {
   page?: number = 1;
 
   @IsOptional()
-  @IsInt()
-  @Type(() => Number)
+  // @Type(() => Number)
   limit?: number = 10;
 }

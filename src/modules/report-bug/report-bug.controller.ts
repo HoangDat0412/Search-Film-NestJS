@@ -27,13 +27,13 @@ export class ReportBugController {
   constructor(private readonly reportBugsService: ReportBugService) {}
 
   @Get()
-  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  // @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   async findAll(
     @Query('search') search: string = '',
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
   ) {
-    return this.reportBugsService.findAll(search, page, limit);
+    return this.reportBugsService.findAll(search, +page || 1, +limit || 10);
   }
 
   @Get(':bug_id')
