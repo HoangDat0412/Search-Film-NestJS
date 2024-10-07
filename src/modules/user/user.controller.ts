@@ -175,4 +175,11 @@ export class UserController {
   async getStatistics(): Promise<StatisticsDto> {
     return this.userService.getStatistics();
   }
+
+  @Get('me/static')
+  @UseGuards(AuthGuard)
+  async getUserStatistics(@Req() req: any) {
+    const userId = req.user_data.user_id; // Lấy user_id từ request
+    return this.userService.getUserStatistics(userId);
+  }
 }

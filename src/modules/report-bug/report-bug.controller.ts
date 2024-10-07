@@ -20,20 +20,41 @@ import { ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { createMulterOptions } from '../user/uploadFile/multer.config';
 import { RoleGuard } from '../auth/guards/role.guard';
+import { NotificationService } from '../notification/notification.service';
 
 @Controller('report-bug')
 @ApiTags('report-bug')
 export class ReportBugController {
-  constructor(private readonly reportBugsService: ReportBugService) {}
+  constructor(
+    private readonly reportBugsService: ReportBugService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   @Get()
-  // @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
+  @UseGuards(AuthGuard, new RoleGuard(['admin', 'content creator']))
   async findAll(
     @Query('search') search: string = '',
     @Query('page') page: string,
     @Query('limit') limit: string,
   ) {
     return this.reportBugsService.findAll(search, +page || 1, +limit || 10);
+  }
+
+  @Get('all/me')
+  @UseGuards(AuthGuard)
+  async findAllUser(
+    @Query('search') search: string = '',
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Req() req: any,
+  ) {
+    const user_id = req.user_data.user_id;
+    return this.reportBugsService.findAllUser(
+      search,
+      +page || 1,
+      +limit || 10,
+      +user_id,
+    );
   }
 
   @Get(':bug_id')
@@ -48,15 +69,24 @@ export class ReportBugController {
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() createReportBugDto: CreateReportBugDto,
-    @Req() req: any
+    @Req() req: any,
   ) {
     const url_image = `/uploads/reportbug/${file.filename}`;
     const user_id = req.user_data.user_id;
-    return this.reportBugsService.create({
+    const report = await this.reportBugsService.create({
       ...createReportBugDto,
       url_image,
-      user_id
+      user_id,
     });
+
+    await this.notificationService.notifyAdmins(
+      `A new bug report has been submitted by user ${report.user_id}.`,
+    );
+
+    return {
+      success: true,
+      message: 'Bug report created and notification sent to admin.',
+    };
   }
 
   @Delete(':bug_id')

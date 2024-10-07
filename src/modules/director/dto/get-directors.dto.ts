@@ -1,13 +1,9 @@
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsOptional } from 'class-validator';
 
 export class GetDirectorsDto {
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  page?: number;
+  page?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  item_per_page?: number;
+  item_per_page?: string;
 }

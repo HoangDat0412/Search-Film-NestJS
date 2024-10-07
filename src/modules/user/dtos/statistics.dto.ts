@@ -15,4 +15,5 @@ export class StatisticsDto {
   actorsThisWeek: number;
   filmTypesThisWeek: number;
   countriesThisWeek: number;
+  filmsThisDay: number;
 }

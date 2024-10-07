@@ -147,6 +147,23 @@ export class UserService {
     };
   }
 
+  async getAllUsers(): Promise<any> {
+
+    const [users] = await this.prismaService.$transaction([
+      this.prismaService.user.findMany({
+        where: {
+          role: {
+            not: 'admin',
+          },
+        },
+      }),
+    ]);
+
+    return {
+      users,
+    };
+  }
+
   async enable2fa(id: number): Promise<User> {
     return this.prismaService.user.update({
       where: {
@@ -180,7 +197,7 @@ export class UserService {
         avatar_url: true,
         role: true,
         updated_at: true,
-        bio: true
+        bio: true,
       },
     });
   }
@@ -195,7 +212,7 @@ export class UserService {
         avatar_url: true,
         role: true,
         updated_at: true,
-        bio: true
+        bio: true,
       },
     });
   }
@@ -210,7 +227,7 @@ export class UserService {
         avatar_url: true,
         role: true,
         updated_at: true,
-        bio: true
+        bio: true,
       },
     });
   }
@@ -342,14 +359,21 @@ export class UserService {
   }
 
   async getStatistics(): Promise<StatisticsDto> {
-    const [totalFilms, filmsThisWeek] = await Promise.all([
+    const [totalFilms, filmsThisWeek, filmsThisDay] = await Promise.all([
       this.prismaService.movie.count(),
       this.prismaService.movie.count({
         where: {
           created_at: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7))
-          }
-        }
+            gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+          },
+        },
+      }),
+      this.prismaService.movie.count({
+        where: {
+          created_at: {
+            gte: new Date(new Date().setDate(new Date().getDate() - 1)),
+          },
+        },
       }),
     ]);
 
@@ -359,10 +383,10 @@ export class UserService {
         where: {
           is_verify: true,
           created_at: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7))
-          }
-        }
-      })
+            gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+          },
+        },
+      }),
     ]);
 
     const [totalRates, ratesThisWeek] = await Promise.all([
@@ -370,10 +394,10 @@ export class UserService {
       this.prismaService.rating.count({
         where: {
           created_at: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7))
-          }
-        }
-      })
+            gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+          },
+        },
+      }),
     ]);
 
     const [totalReportBugs, bugsThisWeek] = await Promise.all([
@@ -381,10 +405,10 @@ export class UserService {
       this.prismaService.reportBug.count({
         where: {
           created_at: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7))
-          }
-        }
-      })
+            gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+          },
+        },
+      }),
     ]);
 
     const [totalBlogs, blogsThisWeek] = await Promise.all([
@@ -392,10 +416,10 @@ export class UserService {
       this.prismaService.blog.count({
         where: {
           created_at: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7))
-          }
-        }
-      })
+            gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+          },
+        },
+      }),
     ]);
 
     const [totalActors, actorsThisWeek] = await Promise.all([
@@ -406,13 +430,13 @@ export class UserService {
             some: {
               movie: {
                 created_at: {
-                  gte: new Date(new Date().setDate(new Date().getDate() - 7))
-                }
-              }
-            }
-          }
-        }
-      })
+                  gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+                },
+              },
+            },
+          },
+        },
+      }),
     ]);
 
     const [totalFilmTypes, filmTypesThisWeek] = await Promise.all([
@@ -421,11 +445,11 @@ export class UserService {
         where: {
           movie: {
             created_at: {
-              gte: new Date(new Date().setDate(new Date().getDate() - 7))
-            }
-          }
-        }
-      })
+              gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+            },
+          },
+        },
+      }),
     ]);
 
     const [totalCountries, countriesThisWeek] = await Promise.all([
@@ -434,11 +458,11 @@ export class UserService {
         where: {
           movie: {
             created_at: {
-              gte: new Date(new Date().setDate(new Date().getDate() - 7))
-            }
-          }
-        }
-      })
+              gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+            },
+          },
+        },
+      }),
     ]);
 
     return {
@@ -457,7 +481,57 @@ export class UserService {
       totalFilmTypes,
       filmTypesThisWeek,
       totalCountries,
-      countriesThisWeek
+      countriesThisWeek,
+      filmsThisDay,
+    };
+  }
+
+  async getUserStatistics(userId: number) {
+    // 1. Tổng số blog đã viết
+    const totalBlogs = await this.prismaService.blog.count({
+      where: { user_id: userId },
+    });
+
+    // 2. Tổng số đánh giá
+    const totalRatings = await this.prismaService.rating.count({
+      where: { user_id: userId },
+    });
+
+    // 3. Số lần đánh giá ở các mốc điểm
+    const ratingCountByScore = await this.prismaService.rating.groupBy({
+      by: ['score'],
+      where: { user_id: userId },
+      _count: true,
+    });
+
+    // 4. 3 thể loại xem nhiều nhất
+    const topGenres = await this.prismaService.movieGenre.groupBy({
+      by: ['genre_id'],
+      where: {
+        movie: { watch_histories: { some: { user_id: userId } } }, // Truy vấn phim mà user đã xem
+      },
+      _count: {
+        genre_id: true,
+      },
+      orderBy: {
+        _count: {
+          genre_id: 'desc',
+        },
+      },
+      take: 3, // Lấy 3 thể loại nhiều nhất
+    });
+
+    // Lấy thông tin chi tiết của các thể loại
+    const genreIds = topGenres.map((genre) => genre.genre_id);
+    const genres = await this.prismaService.genre.findMany({
+      where: { genre_id: { in: genreIds } },
+    });
+
+    return {
+      totalBlogs,
+      totalRatings,
+      ratingCountByScore,
+      topGenres: genres,
     };
   }
 }

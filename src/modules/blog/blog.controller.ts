@@ -20,12 +20,15 @@ import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
 import { FindAllBlogDto } from './dto/find-all-blog.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { title } from 'process';
+import { NotificationService } from '../notification/notification.service';
 
 @Controller('blog')
 @ApiTags('blog')
 export class BlogController {
-  constructor(private readonly blogService: BlogService) {}
+  constructor(
+    private readonly blogService: BlogService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   @UseGuards(AuthGuard)
   @Post()
@@ -107,8 +110,27 @@ export class BlogController {
 
   @UseGuards(AuthGuard)
   @Patch(':id/verify')
-  verifyBlog(@Param('id') id: string, @Request() req) {
-    return this.blogService.verifyBlog(+id, req.user_data.role === 'admin');
+  async verifyBlog(@Param('id') id: string, @Request() req) {
+    const blog = await this.blogService.verifyBlog(
+      +id,
+      req.user_data.role === 'admin',
+    );
+    // Tự động gửi thông báo cho user khi blog được duyệt
+    await this.notificationService.createNotification({
+      user_id: blog.user_id,
+      message: `Your blog titled "${blog.title}" has been approved.`,
+      read: false,
+    });
+
+    return {
+      success: true,
+      message: 'Blog approved and notification sent to user.',
+    };
+  }
+
+  @Get('top-bloggers/user')
+  async getTopBloggers(@Query('limit') limit: number = 10) {
+    return this.blogService.getTopBloggers(limit);
   }
 
   // Other methods remain unchanged...

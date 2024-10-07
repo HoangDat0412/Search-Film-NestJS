@@ -57,9 +57,7 @@ export class PlaylistController {
   @Delete(':playlistId')
   @UseGuards(AuthGuard)
   async deletePlaylist(@Param('playlistId') id: string, @Req() req: any) {
-    const userId = req.user_data.user_id; //sau thay token
-    console.log('user id', userId);
-    console.log('playlist id', id);
+    const userId = req.user_data.user_id;
 
     const playlist = await this.playlistService.deletePlaylist(+id, +userId);
     return playlist;

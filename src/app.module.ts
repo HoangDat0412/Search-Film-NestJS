@@ -22,6 +22,8 @@ import { mailerConfig } from './config/mailer.config';
 import { CountryModule } from './modules/country/country.module';
 import { BlogModule } from './modules/blog/blog.module';
 import { WatchlistModule } from './modules/watchlist/watchlist.module';
+import { WatchHistoryModule } from './modules/watch-history/watch-history.module';
+import { CrawlFilmModule } from './modules/crawl-film/crawl-film.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { WatchlistModule } from './modules/watchlist/watchlist.module';
       inject: [ConfigService],
     }),
     WatchlistModule,
+    WatchHistoryModule,
+    CrawlFilmModule
   ],
   controllers: [AppController],
   providers: [AppService],

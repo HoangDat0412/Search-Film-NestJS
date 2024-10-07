@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsOptional,
   IsInt,
@@ -23,6 +24,10 @@ export class FilterMovieDto {
   @IsOptional()
   @IsString()
   search_query?: string;
+
+  @IsOptional()
+  @IsString()
+  typefilm?: string;
 
   @IsOptional()
   @IsNumber()

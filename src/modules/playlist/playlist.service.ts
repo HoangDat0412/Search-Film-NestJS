@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlaylist } from './dto/create-playlist.dto';
 
@@ -49,10 +49,33 @@ export class PlaylistService {
     });
   }
 
-  async deletePlaylist(category_id: number, user_id: number) {
-    return this.prisma.category.delete({
-      where: { category_id, user_id },
+  async deletePlaylist(categoryId: number, userId: number) {
+
+    // Tìm category dựa trên id
+    const category = await this.prisma.category.findUnique({
+      where: { category_id: categoryId },
     });
+
+    // Kiểm tra nếu không tồn tại category
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    // Kiểm tra nếu user hiện tại không phải là người tạo
+    if (category.user_id !== userId) {
+      throw new ForbiddenException('You can only delete your own categories');
+    }
+
+    // Xóa các mối quan hệ với CategoryMovie trước
+    await this.prisma.categoryMovie.deleteMany({
+      where: { category_id: categoryId },
+    });
+
+    // Xóa Category
+    return this.prisma.category.delete({
+      where: { category_id: categoryId },
+    });
+
   }
 
   async removeMovieFromPlaylist(category_id: number, movie_id: number) {
@@ -109,4 +132,6 @@ export class PlaylistService {
       totalPages: Math.ceil(totalMovies / pageSize),
     };
   }
+
+  
 }

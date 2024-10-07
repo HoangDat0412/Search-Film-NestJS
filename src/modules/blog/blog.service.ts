@@ -188,4 +188,47 @@ export class BlogService {
       }
     }
   }
+
+  async getTopBloggers(limit: number) {
+    // Group by user_id in Blog, count the number of blogs for each user
+    const topBloggers = await this.prisma.blog.groupBy({
+      by: ['user_id'],
+      _count: {
+        blog_id: true, // Count the number of blogs for each user
+      },
+      orderBy: {
+        _count: {
+          blog_id: 'desc', // Order by the number of blogs in descending order
+        },
+      },
+      take: limit, // Limit the number of results
+    });
+
+    // Get user details for the top bloggers
+    const userIds = topBloggers.map((blogger) => blogger.user_id);
+    const users = await this.prisma.user.findMany({
+      where: {
+        user_id: { in: userIds },
+      },
+      select: {
+        user_id: true,
+        username: true,
+        email: true,
+        avatar_url: true,
+      },
+    });
+
+    // Combine user details with the blog count
+    const result = users.map((user) => {
+      const blogCount =
+        topBloggers.find((blogger) => blogger.user_id === user.user_id)?._count
+          ?.blog_id || 0;
+      return {
+        ...user,
+        blogCount,
+      };
+    });
+
+    return result;
+  }
 }

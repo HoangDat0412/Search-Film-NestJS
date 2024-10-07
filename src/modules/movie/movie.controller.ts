@@ -144,6 +144,7 @@ export class MovieController {
       movie_country: query.movie_country
         ? parseInt(query.movie_country, 10)
         : undefined,
+      typefilm: query.typefilm,
       year: query.year ? parseInt(query.year, 10) : undefined,
       movie_genre: query.movie_genre
         ? parseInt(query.movie_genre, 10)
@@ -215,6 +216,20 @@ export class MovieController {
     try {
       const limit = query.limit || 20; // Default to 20 if limit is not provided
       const movies = await this.movieService.getTopMoviesOfMonth(limit);
+      return { movies };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to retrieve top movies',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('top-of-week')
+  async getTopMoviesOfWeek(@Query() query: GetTopMoviesDto) {
+    try {
+      const limit = query.limit || 20; // Default to 20 if limit is not provided
+      const movies = await this.movieService.getTopMoviesOfWeek(limit);
       return { movies };
     } catch (error) {
       throw new HttpException(

@@ -1,0 +1,16 @@
+version: '3'
+services:
+  backend:
+    build: .
+    container_name: backend_app
+    ports:
+      - "80:80"
+    volumes:
+      - ./src:/usr/src/app/src       # Mount source code folder
+      - ./prisma:/usr/src/app/prisma  # Mount Prisma folder
+      - ./node_modules:/usr/src/app/node_modules  # Mount node_modules
+    environment:
+      DATABASE_URL: "postgresql://postgres:20112003@localhost:5432/postgres?schema=public"
+    restart: always
+volumes:
+  pgdata:

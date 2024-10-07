@@ -49,6 +49,35 @@ export class MovieService {
     });
   }
 
+  async getTopMoviesOfWeek(limit: number = 20) {
+    // Calculate the start day (6 days before today) and the end day (today)
+    const today = new Date();
+    const startOfWeek = new Date(today.setDate(today.getDate() - 6)); // Start day: 6 days before today
+    const endOfWeek = new Date(); // End day: today
+  
+    return this.prisma.movie.findMany({
+      where: {
+        created_at: {
+          gte: startOfWeek, // Movies created after or on startOfWeek
+          lte: endOfWeek, // Movies created before or on today
+        },
+      },
+      orderBy: {
+        view: 'desc', // Order by view in descending order
+      },
+      take: limit, // Limit the number of results
+      select: {
+        movie_id: true,
+        name: true,
+        view: true,
+        thumb_url: true,
+        poster_url: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+  }
+
   async addMovieToPlaylist(movie_id: number, category_id: number) {
     return this.prisma.categoryMovie.create({
       data: {
@@ -442,6 +471,7 @@ export class MovieService {
   async filterMovies(filters: FilterMovieDto) {
     const {
       movie_country,
+      typefilm,
       year,
       movie_genre,
       search_query,
@@ -459,6 +489,12 @@ export class MovieService {
         ...(search_query && {
           name: {
             contains: search_query,
+            mode: 'insensitive',
+          },
+        }),
+        ...(typefilm && {
+          type: {
+            contains: typefilm,
             mode: 'insensitive',
           },
         }),

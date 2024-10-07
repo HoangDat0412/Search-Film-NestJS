@@ -50,6 +50,52 @@ export class RequestFeatureService {
     };
   }
 
+  async findAllUser(
+    searchQuery: string = '',
+    page: number = 1,
+    limit: number = 10,
+    userid:number
+  ): Promise<{
+    data: RequestFeature[];
+    total: number;
+    total_pages: number;
+    current_page: number;
+  }> {
+    // Tính số bản ghi cần phân trang
+    const [data, total] = await Promise.all([
+      this.prisma.requestFeature.findMany({
+        where: {
+          OR: [
+            { title: { contains: searchQuery, mode: 'insensitive' } },
+            { description: { contains: searchQuery, mode: 'insensitive' } },
+          ],
+          user_id: userid,
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.requestFeature.count({
+        where: {
+          OR: [
+            { title: { contains: searchQuery, mode: 'insensitive' } },
+            { description: { contains: searchQuery, mode: 'insensitive' } },
+          ],
+          user_id: userid,
+        },
+      }),
+    ]);
+
+    // Tính số trang
+    const total_pages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      total_pages,
+      current_page: page,
+    };
+  }
+
   async findOne(feature_id: number): Promise<RequestFeature> {
     return this.prisma.requestFeature.findUnique({ where: { feature_id } });
   }
