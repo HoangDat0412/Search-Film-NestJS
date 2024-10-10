@@ -10,20 +10,16 @@ COPY package*.json ./
 # Cài đặt dependencies
 RUN npm install
 
-# Cài đặt NestJS CLI global để sử dụng các lệnh của NestJS
-RUN npm install -g @nestjs/cli
-
-# Copy toàn bộ mã nguồn của ứng dụng vào container
 COPY . .
 
 # Chạy lệnh prisma generate để khởi tạo Prisma Client
 RUN npx prisma generate
 
 # Build ứng dụng bằng NestJS CLI
-RUN nest build
+RUN npm run build
 
 # Expose port mà ứng dụng sẽ chạy trên đó
-EXPOSE 80
+EXPOSE 3000
 
 # Lệnh để chạy ứng dụng
 CMD ["npm", "run", "start:prod"]

@@ -43,7 +43,7 @@ export class RequestFeatureController {
     );
   }
 
-  @Get()
+  @Get('me/allfeauture')
   @UseGuards(AuthGuard)
   async findAllUser(
     @Query('search') search: string = '',
